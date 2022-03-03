@@ -136,12 +136,12 @@ layer make_quantized_shortcut_layer(int batch, int n, int *input_layers, int* in
        if (w != layers_w || h != layers_h || c != layers_c){
             // printf("make shortcut weigts :%d , n=%d\n",layers_c,n);
             l.nweights = c*layers_c;
-            l.biases = (float*)xcalloc(c, sizeof(float));   
+            //l.biases = (float*)xcalloc(c, sizeof(float));   
             l.quantized_weights = (char*)xcalloc(l.nweights, sizeof(char));
             l.M0_int32 = (int*)xcalloc(c, sizeof(int));   
             l.right_shift = (unsigned char*)xcalloc(c, sizeof(unsigned char));   
             l.biases_int32 = (int*)xcalloc(c, sizeof(int));
-            l.quantization_per_channel_scale = (float*)xcalloc(c,sizeof(float)); 
+            //l.quantization_per_channel_scale = (float*)xcalloc(c,sizeof(float)); 
             l.quantization_per_channel_zeropoint = (int*)xcalloc(c,sizeof(int)); 
        }
     }

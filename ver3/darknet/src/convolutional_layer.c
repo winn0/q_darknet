@@ -921,8 +921,8 @@ convolutional_layer make_quantized_convolutional_layer(int batch, int steps, int
     else {
         if(l.quantization_type){
             l.quantized_weights = (char*)xcalloc(l.nweights, sizeof(char));
-            l.biases = (float*)xcalloc(n, sizeof(float));   
-            l.quantization_per_channel_scale = (float*)xcalloc(n,sizeof(float)); 
+            //l.biases = (float*)xcalloc(n, sizeof(float));   
+            //l.quantization_per_channel_scale = (float*)xcalloc(n,sizeof(float)); 
             l.quantization_per_channel_zeropoint = (int*)xcalloc(n,sizeof(int)); 
             l.M0_int32 = (int*)xcalloc(n, sizeof(int));   
             l.right_shift = (unsigned char*)xcalloc(n, sizeof(unsigned char));  

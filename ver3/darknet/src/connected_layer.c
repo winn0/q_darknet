@@ -190,7 +190,7 @@ connected_layer make_quantized_connected_layer(int batch, int steps, int inputs,
         l.right_shift = (unsigned char*)xcalloc(outputs, sizeof(unsigned char));   
         l.quantization_per_channel_zeropoint = (int*)xcalloc(outputs,sizeof(int)); 
         l.biases_int32 = (int*)xcalloc(outputs, sizeof(int));   
-        l.quantization_per_channel_scale = (float*)xcalloc(outputs,sizeof(float)); 
+        //l.quantization_per_channel_scale = (float*)xcalloc(outputs,sizeof(float)); 
 
         //l.output = (float*)xcalloc(total_batch * outputs, sizeof(float));    
         //l.weights = (float*)xcalloc(outputs * inputs, sizeof(float));

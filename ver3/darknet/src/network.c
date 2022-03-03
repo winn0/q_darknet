@@ -269,7 +269,7 @@ network make_network(int n)
 void forward_network(network net, network_state state)
 {
     state.workspace = net.workspace;
-    int i;
+    int i , j;
     for(i = 0; i < net.n; ++i){
         state.index = i;
         layer l = net.layers[i];
@@ -290,18 +290,9 @@ void forward_network(network net, network_state state)
             if(state.quantization_type){   
                 printf("forwward %d complete\n",i);         
                 state.quantized_input = l.quantized_output_uint8;
-               // for (i=0 ;i<10; i++){
-                printf("quantized_output_uint8[0]:%d\n",l.quantized_output_uint8[0]);
-                printf("quantized_output_uint8[1]:%d\n",l.quantized_output_uint8[1]);
-                printf("quantized_output_uint8[2]:%d\n",l.quantized_output_uint8[2]);
-                printf("quantized_output_uint8[3]:%d\n",l.quantized_output_uint8[3]);
-                printf("quantized_output_uint8[4]:%d\n",l.quantized_output_uint8[4]);
-                printf("quantized_output_uint8[5]:%d\n",l.quantized_output_uint8[5]);
-                printf("quantized_output_uint8[6]:%d\n",l.quantized_output_uint8[6]);
-                printf("quantized_output_uint8[7]:%d\n",l.quantized_output_uint8[7]);
-                printf("quantized_output_uint8[8]:%d\n",l.quantized_output_uint8[8]);
-                printf("quantized_output_uint8[9]:%d\n",l.quantized_output_uint8[9]);
-                //}
+               for (j=0 ;j<10; j++){
+                printf("quantized_output_uint8[%d]:%d\n",j,l.quantized_output_uint8[j]);
+                }
                 //state.quantized_input_scale= l.quantization_layer_scale;
                 state.quantized_input_zeropoint=l.quantization_layer_zeropoint;
             }
