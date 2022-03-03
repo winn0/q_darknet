@@ -18,6 +18,6 @@ resnet18 cifar10 model is referenced from https://gaussian37.github.io/dl-pytorc
 
 Resnet18_qat_cifar10 :training model and save
 
-extract_weight : save weights file to merged_weights and can see layer scales, zeropoints 
+make scale_fixed_point : fixed point normalization for Scale and save weights file to merged_weights and can see layer scales, zeropoints 
 
-edit_resnet18.ipynb: edit quantized resnet18 zeropint and scale 
+edit_resnet18.ipynb: edit quantized resnet18 zeropoint and scale 
