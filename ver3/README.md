@@ -2,9 +2,6 @@
 fixed point nomalization is done in python
 
 ## DarkNet command
-cd darknet/data
-python download_and_convert_mnist.py
-cd ..
 ./darknet classifier predict cfg/cifar10.data cfg/quantized_resnet18.cfg backup/merged_weights_resnet18_edited_normalized data/CIFAR10_images
 
 ## Avaiable operation
