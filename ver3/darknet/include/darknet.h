@@ -721,6 +721,12 @@ typedef enum {
 // network.h
 typedef struct network {
     int quantization_type; // parameter for quantizing  0:float32 1:int8
+    float normalize_mean_0;
+    float normalize_mean_1;
+    float normalize_mean_2;
+    float normalize_var_0;
+    float normalize_var_1;
+    float normalize_var_2;
     float input_scale;
     int input_zeropoint;
     int n;

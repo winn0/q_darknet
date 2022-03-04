@@ -872,19 +872,27 @@ void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *fi
         image resized = resize_min(im, net.w);
         image cropped = crop_image(resized, (resized.w - net.w)/2, (resized.h - net.h)/2, net.w, net.h);
         //unsigned char * quantized_X= (unsigned char*)xcalloc(cropped.w*cropped.h*cropped.c, sizeof(char));  
-        unsigned char * quantized_X= (unsigned char*)xcalloc(32*32*3, sizeof(char));  
+        unsigned char * quantized_X= (unsigned char*)xcalloc(net.w*net.h*net.c, sizeof(char));  
         float* X;
         double time;
         float *predictions;
         int read_bytes;
         if (net.quantization_type){
             printf("init input quantization\n");
+            float * mean=(float*)xcalloc(net.c, sizeof(float)); 
+            float * var=(float*)xcalloc(net.c, sizeof(float)); 
+            mean[0]=net.normalize_mean_0;
+            mean[1]=net.normalize_mean_1;
+            mean[2]=net.normalize_mean_2;
+            var[0]=net.normalize_var_0;
+            var[1]=net.normalize_var_1;
+            var[2]=net.normalize_var_2;
             //for mnist
             //float mean[] = {0.1307, 0.1307, 0.1307};
             //float var[] = {0.3081, 0.3081, 0.3081};
             //for cifar10
-            float mean[] = {0.485, 0.456, 0.406};
-            float var[] = {0.229, 0.224, 0.225};            
+            //float mean[] = {0.485, 0.456, 0.406};
+            //float var[] = {0.229, 0.224, 0.225};            
             normalize_cpu(cropped.data, mean, var, 1, 3, im.w*im.h);
             
             //input quantization can combine with normalize

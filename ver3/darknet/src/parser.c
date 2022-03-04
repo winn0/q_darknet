@@ -1250,7 +1250,12 @@ void parse_net_options(list *options, network *net)
     net->quantization_type = option_find_int(options, "quantization_type", 0);
     net->input_scale = option_find_float(options, "input_scale", 0);
     net->input_zeropoint = option_find_int(options, "input_zeropoint", 0);
-    net->max_batches = option_find_int(options, "max_batches", 0);
+    net->normalize_mean_0 = option_find_float(options, "normalize_mean_0", 0);
+    net->normalize_mean_1 = option_find_float(options, "normalize_mean_1", 0);
+    net->normalize_mean_2 = option_find_float(options, "normalize_mean_2", 0);
+    net->normalize_var_0 = option_find_float(options, "normalize_var_0", 0);
+    net->normalize_var_1 = option_find_float(options, "normalize_var_1", 0);
+    net->normalize_var_2 = option_find_float(options, "normalize_var_2", 0);    net->max_batches = option_find_int(options, "max_batches", 0);
     net->batch = option_find_int(options, "batch",1);
     net->learning_rate = option_find_float(options, "learning_rate", .001);
     net->learning_rate_min = option_find_float_quiet(options, "learning_rate_min", .00001);
@@ -2243,8 +2248,6 @@ void load_quantized_connected_weights(layer l, FILE *fp, int transpose, int quan
         printf("biases_int32[0]=%d\n",l.biases_int32[0]);
         printf("1\n");
 
-        fread(l.quantization_per_channel_zeropoint, sizeof(int), l.outputs, fp);
-        fread(l.biases, sizeof(float), l.outputs, fp);
         if(transpose){
             transpose_matrix(l.quantized_weights, l.inputs, l.outputs);
         }

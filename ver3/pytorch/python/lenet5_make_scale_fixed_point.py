@@ -10,10 +10,6 @@ model_dir = os.getcwd()+'/saved_models'
 model_filename='le5_saved.pt'
 model_filepath=model_dir+'/'+model_filename
 
-
-model_dir = os.getcwd()+'/saved_models'
-model_filename='le5.pt'
-model_filepath=model_dir+'/'+'le5.pt'
 transform = transforms.Compose([
                                      transforms.ToTensor(),
                                      transforms.Normalize((0.1307,), (0.3081,))
