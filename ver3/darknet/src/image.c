@@ -904,9 +904,10 @@ image crop_image(image im, int dx, int dy, int w, int h)
 }
 unsigned char* quantize_input(image cropped,unsigned char* quantized_out,float input_scale,int input_zeropoint){
     //make char space 
-    for(int c=0; c<cropped.c ;c++){
-        for(int j =0; j<cropped.h; j++){
-            for(int i = 0; i<cropped.w; i++){
+    int c, j, i;
+    for(c=0; c<cropped.c ;c++){
+        for(j =0; j<cropped.h; j++){
+            for(i = 0; i<cropped.w; i++){
             quantized_out[c*cropped.w*cropped.h+(i+j*cropped.w)]= (unsigned char)(cropped.data[c*cropped.w*cropped.h+(i+j*cropped.w)]/input_scale) +(unsigned char)(input_zeropoint);
             }
             //printf("quantized_out:%d\n",quantized_out[c*cropped.w*cropped.h+(10+j*cropped.w)]);

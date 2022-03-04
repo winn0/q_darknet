@@ -352,7 +352,8 @@ void  fill_cpu(int N, float ALPHA, float *X, int INCX)
 }
 void  fill_quantized_cpu(int N, float ALPHA, int *X, int INCX)
 {
-        for (int i = 0; i < N; ++i) X[i*INCX] = 0;
+  int i;
+        for (i = 0; i < N; ++i) X[i*INCX] = 0;
 }
 void deinter_cpu(int NX, float *X, int NY, float *Y, int B, float *OUT)
 {

@@ -1,8 +1,13 @@
-# DarkNet Classifier Ver.3 (quantized Resnet18 CIFAR10) 
+# DarkNet Classifier Ver.3 (quantized Resnet18 CIFAR10, Lenet5 Mnist) 
 fixed point nomalization is done in python
 
 ## DarkNet command
-./darknet classifier predict cfg/cifar10.data cfg/quantized_resnet18.cfg backup/merged_weights_resnet18_edited_normalized data/CIFAR10_images
+
+###resnet18
+./darknet classifier predict cfg/cifar10.data cfg/quantized_resnet18.cfg backup/merged_weights_resnet18_edited_normalized data/CIFAR10_images/bird/0100.jpg
+
+###lenet5
+./darknet classifier predict cfg/mnist.data cfg/mnist_lenet.cfg backup/merged_weights_le5_mnist_normalized data/mnist_images/test/0_Five.png
 
 ## Avaiable operation
 
