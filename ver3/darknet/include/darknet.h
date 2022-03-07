@@ -721,8 +721,16 @@ typedef enum {
 // network.h
 typedef struct network {
     int quantization_type; // parameter for quantizing  0:float32 1:int8
-    float input_scale;
-    int input_zeropoint;
+    int start_check_point;
+    int end_check_point;
+    float normalize_mean_0;
+    float normalize_mean_1;
+    float normalize_mean_2;
+    float normalize_var_0;
+    float normalize_var_1;
+    float normalize_var_2;
+    float input_scale;   //quantization parameter
+    int input_zeropoint; //quantization parameter
     int n;
     int batch;
     uint64_t *seen;
@@ -1056,7 +1064,7 @@ LIB_API void diounms_sort(detection *dets, int total, int classes, float thresh,
 
 // network.h
 LIB_API float *network_predict(network net, float *input);
-LIB_API float *quantized_network_predict(network net, char *input);
+LIB_API float *quantized_network_predict(network net, unsigned char *input);
 LIB_API float *network_predict_ptr(network *net, float *input);
 LIB_API detection *get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int letter);
 LIB_API det_num_pair* network_predict_batch(network *net, image im, int batch_size, int w, int h, float thresh, float hier, int *map, int relative, int letter);

@@ -1385,18 +1385,6 @@ void add_bias(float *output, float *biases, int batch, int n, int size)
         }
     }
 }
-void quantized_add_bias(float *output, float *biases, int batch, int n, int size, float quantization_layer_scale)
-{
-    int i,j,b;
-    for(b = 0; b < batch; ++b){
-        for(i = 0; i < n; ++i){
-            float scaled_bias = (float)biases[i]/quantization_layer_scale;
-            for(j = 0; j < size; ++j){
-                output[(b*n + i)*size + j] =output[(b*n + i)*size + j] + scaled_bias;
-            }
-        }
-    }
-}
 void scale_bias(float *output, float *scales, int batch, int n, int size)
 {
     int i,j,b;
@@ -1624,14 +1612,6 @@ void forward_convolutional_layer(convolutional_layer l, network_state state)
         binarize_cpu(state.input, l.c*l.h*l.w*l.batch, l.binary_input);
         state.input = l.binary_input;
     }
-    printf("l.n:%d\n",l.n);
-    printf("l.groups:%d\n",l.groups);
-    printf("l.size:%d\n",l.size);
-    printf("out_h:%d\n",out_h);
-    printf("out_w:%d\n",out_w);
-    printf("l.batch:%d\n",l.batch);
-    printf("l.nweights:%d\n",l.nweights);
-    printf("state.workspace:%f\n",state.workspace);
     int m = l.n / l.groups;
     int k = l.size*l.size*l.c / l.groups;
     int n = out_h*out_w;

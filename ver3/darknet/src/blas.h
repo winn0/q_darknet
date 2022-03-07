@@ -26,13 +26,10 @@ void pow_cpu(int N, float ALPHA, float *X, int INCX, float *Y, int INCY);
 void mul_cpu(int N, float *X, int INCX, float *Y, int INCY);
 
 void axpy_cpu(int N, float ALPHA, float *X, int INCX, float *Y, int INCY);
-void quantized_axpy_cpu(int N, float ALPHA, float *X, int INCX, float *Y, int INCY,float quantization_layer_scale);
-unsigned char q_rounding(float input);
 void copy_cpu(int N, float *X, int INCX, float *Y, int INCY);
 void scal_cpu(int N, float ALPHA, float *X, int INCX);
 void scal_add_cpu(int N, float ALPHA, float BETA, float *X, int INCX);
 void fill_cpu(int N, float ALPHA, float * X, int INCX);
-void fill_quantized_cpu(int N, float ALPHA, int * X, int INCX);
 float dot_cpu(int N, float *X, int INCX, float *Y, int INCY);
 void test_gpu_blas();
 void shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float *out);
@@ -45,7 +42,6 @@ void variance_cpu(float *x, float *mean, int batch, int filters, int spatial, fl
 void normalize_cpu(float *x, float *mean, float *variance, int batch, int filters, int spatial);
 
 void add_bias(float *output, float *biases, int batch, int n, int size);
-void quantized_add_bias(float *output, float *biases, int batch, int n, int size, float quantization_layer_scale);
 void scale_bias(float *output, float *scales, int batch, int n, int size);
 void backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates);
 void mean_delta_cpu(float *delta, float *variance, int batch, int filters, int spatial, float *mean_delta);

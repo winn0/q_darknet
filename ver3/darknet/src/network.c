@@ -270,7 +270,15 @@ void forward_network(network net, network_state state)
 {
     state.workspace = net.workspace;
     int i , j;
-    for(i = 0; i < net.n; ++i){
+    int start_point =0;
+    if(net.start_check_point){
+
+        start_point = net.start_check_point-1;
+        if(start_point)
+            state.quantized_input_zeropoint=state.net.layers[start_point-1].quantization_layer_zeropoint;
+            state.net.layers[start_point-1].quantized_output_uint8 =  state.quantized_input;
+    }
+    for(i = start_point; i < net.n; ++i){
         state.index = i;
         layer l = net.layers[i];
         state.quantization_type = net.quantization_type;
@@ -295,6 +303,14 @@ void forward_network(network net, network_state state)
                 }
                 //state.quantized_input_scale= l.quantization_layer_scale;
                 state.quantized_input_zeropoint=l.quantization_layer_zeropoint;
+                if(net.end_check_point){
+                    if(i == net.end_check_point-1){
+                        FILE *fp = fopen("checkpoint_output","wb");
+                        fwrite(l.quantized_output_uint8,sizeof(char),l.outputs,fp);
+                        fclose(fp);
+                        break;                    
+                    }
+                }
             }
             else{
                 state.input = l.output;
@@ -797,7 +813,7 @@ float *network_predict(network net, float *input)
     float *out = get_network_output(net);
     return out;
 }
-float *quantized_network_predict(network net, char *input)
+float *quantized_network_predict(network net, unsigned char *input)
 {
 #ifdef GPU
     if(gpu_index >= 0)  return network_predict_gpu(net, input);
@@ -813,8 +829,14 @@ float *quantized_network_predict(network net, char *input)
     state.train = 0;
     state.delta = 0;
     forward_network(net, state);
-    float *out = get_network_output(net);
-    return out;
+    if(net.end_check_point){
+        float *out =0;
+        return out;
+    }
+    else{
+        float *out = get_network_output(net);
+        return out;
+    }
 }
 
 int num_detections(network *net, float thresh)

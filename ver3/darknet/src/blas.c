@@ -319,15 +319,6 @@ void axpy_cpu(int N, float ALPHA, float *X, int INCX, float *Y, int INCY)
     for(i = 0; i < N; ++i) Y[i*INCY] += ALPHA*X[i*INCX];
 }
 
-void quantized_axpy_cpu(int N, float ALPHA, float *X, int INCX, float *Y, int INCY, float quantization_layer_scale)
-{
-    int i;
-    for(i = 0; i < N; ++i) Y[i*INCY] += ALPHA*X[i*INCX]/quantization_layer_scale;
-}
-unsigned char q_rounding( float input){
-    if (input >=0) return (unsigned char)round(input);
-    else return 0;
-}
 void scal_cpu(int N, float ALPHA, float *X, int INCX)
 {
     int i;
@@ -349,11 +340,6 @@ void  fill_cpu(int N, float ALPHA, float *X, int INCX)
     else {
         for (i = 0; i < N; ++i) X[i*INCX] = ALPHA;
     }
-}
-void  fill_quantized_cpu(int N, float ALPHA, int *X, int INCX)
-{
-  int i;
-        for (i = 0; i < N; ++i) X[i*INCX] = 0;
 }
 void deinter_cpu(int NX, float *X, int NY, float *Y, int B, float *OUT)
 {

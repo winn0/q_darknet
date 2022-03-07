@@ -872,31 +872,51 @@ void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *fi
         image resized = resize_min(im, net.w);
         image cropped = crop_image(resized, (resized.w - net.w)/2, (resized.h - net.h)/2, net.w, net.h);
         //unsigned char * quantized_X= (unsigned char*)xcalloc(cropped.w*cropped.h*cropped.c, sizeof(char));  
-        unsigned char * quantized_X= (unsigned char*)xcalloc(32*32*3, sizeof(char));  
         float* X;
         double time;
         float *predictions;
         int read_bytes;
+        unsigned char * quantized_X;
         if (net.quantization_type){
-            printf("init input quantization\n");
-            //for mnist
-            //float mean[] = {0.1307, 0.1307, 0.1307};
-            //float var[] = {0.3081, 0.3081, 0.3081};
-            //for cifar10
-            float mean[] = {0.485, 0.456, 0.406};
-            float var[] = {0.229, 0.224, 0.225};            
-            normalize_cpu(cropped.data, mean, var, 1, 3, im.w*im.h);
-            
-            //input quantization can combine with normalize
-            for (i=0 ;i<net.h*net.w*net.c; i++)quantized_X[i] = (unsigned char)(round(cropped.data[i]/net.input_scale)+net.input_zeropoint);
+            if(net.start_check_point){
+                int input_size = net.layers[net.start_check_point-1].inputs; 
+                quantized_X= (unsigned char*)xcalloc(input_size, sizeof(char));  
+                
+                FILE *fp = fopen("checkpoint_output", "rb");
+                read_bytes = fread(quantized_X, sizeof(unsigned char),input_size, fp);
+                for(i=0; i<10; i++) printf("check_point_input %d\n",quantized_X[i]);
+            }
+            else{
+                quantized_X= (unsigned char*)xcalloc(net.w*net.h*net.c, sizeof(char));  
 
-
-            //normalize_cpu(im.data, mean, var, 1, 3, im.w*im.h);
-            //quantize_input(cropped,quantized_X,net.input_scale,net.input_zeropoint);
-            //FILE *fp = fopen("cifar10_input", "rb");
-            //read_bytes = fread(quantized_X, sizeof(unsigned char), 32*32*3, fp);
-            //for(i=0; i<32*32; i++) printf("q_X[%d]=%d\n",i,quantized_X[i]);
-            //printf("q_X[0]=%d\n",quantized_X[0]);
+                printf("init input quantization\n");
+                float * mean=(float*)xcalloc(net.c, sizeof(float)); 
+                float * var=(float*)xcalloc(net.c, sizeof(float)); 
+                mean[0]=net.normalize_mean_0;
+                mean[1]=net.normalize_mean_1;
+                mean[2]=net.normalize_mean_2;
+                var[0]=net.normalize_var_0;
+                var[1]=net.normalize_var_1;
+                var[2]=net.normalize_var_2;
+                //for mnist
+                //float mean[] = {0.1307, 0.1307, 0.1307};
+                //float var[] = {0.3081, 0.3081, 0.3081};
+                //for cifar10
+                //float mean[] = {0.485, 0.456, 0.406};
+                //float var[] = {0.229, 0.224, 0.225};            
+                normalize_cpu(cropped.data, mean, var, 1, 3, im.w*im.h);
+                
+                //input quantization can combine with normalize
+                for (i=0 ;i<net.h*net.w*net.c; i++)quantized_X[i] = (unsigned char)(round(cropped.data[i]/net.input_scale)+net.input_zeropoint);
+    
+    
+                //normalize_cpu(im.data, mean, var, 1, 3, im.w*im.h);
+                //quantize_input(cropped,quantized_X,net.input_scale,net.input_zeropoint);
+                //FILE *fp = fopen("cifar10_input", "rb");
+                //read_bytes = fread(quantized_X, sizeof(unsigned char), 32*32*3, fp);
+                //for(i=0; i<32*32; i++) printf("q_X[%d]=%d\n",i,quantized_X[i]);
+                //printf("q_X[0]=%d\n",quantized_X[0]);
+            }
             time = get_time_point();
             predictions = quantized_network_predict(net, quantized_X);
         }
@@ -907,16 +927,18 @@ void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *fi
 
         }
         printf("%s: Predicted in %lf milli-seconds.\n", input, ((double)get_time_point() - time) / 1000);
+        if(!net.end_check_point){
 
-        if(net.hierarchy) hierarchy_predictions(predictions, net.outputs, net.hierarchy, 0);
-        top_k(predictions, net.outputs, top, indexes);
 
-        for(i = 0; i < top; ++i){
-            int index = indexes[i];
-            if(net.hierarchy) printf("%d, %s: %f, parent: %s \n",index, names[index], predictions[index], (net.hierarchy->parent[index] >= 0) ? names[net.hierarchy->parent[index]] : "Root");
-            else printf("%s: %f\n",names[index], predictions[index]);
+            if(net.hierarchy) hierarchy_predictions(predictions, net.outputs, net.hierarchy, 0);
+                top_k(predictions, net.outputs, top, indexes);
+    
+            for(i = 0; i < top; ++i){
+                int index = indexes[i];
+                if(net.hierarchy) printf("%d, %s: %f, parent: %s \n",index, names[index], predictions[index], (net.hierarchy->parent[index] >= 0) ? names[net.hierarchy->parent[index]] : "Root");
+                else printf("%s: %f\n",names[index], predictions[index]);
+            }
         }
-
         free_image(cropped);
         if (resized.data != im.data) {
             free_image(resized);

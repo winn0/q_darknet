@@ -170,7 +170,7 @@ convolutional_layer parse_convolutional(list *options, size_params params)
 {
     int n = option_find_int(options, "filters",1);
     
-    int quantization_type = option_find_int(options, "quantization_type",0);
+    int quantization_type = option_find_int(options, "quantization_type",0); //q_inserted
     float quantization_layer_scale = option_find_float(options, "quantization_layer_scale",0);
     int quantization_layer_zeropoint = option_find_int(options, "quantization_layer_zeropoint",1);
     int groups = option_find_int_quiet(options, "groups", 1);
@@ -230,18 +230,15 @@ convolutional_layer parse_convolutional(list *options, size_params params)
         exit(0);
     }
     convolutional_layer layer =  {0};
-    if (quantization_type){
-        printf(" conv quantized\n");
+    if (quantization_type){ //q_inserted
         layer = make_quantized_convolutional_layer(batch,1,h,w,c,n,groups,size,stride_x,stride_y,dilation,padding,activation, batch_normalize, binary, xnor, params.net.adam, use_bin_output, params.index, antialiasing, share_layer, assisted_excitation, deform, params.train, quantization_type);        
-        //layer = make_convolutional_layer(batch,1,h,w,c,n,groups,size,stride_x,stride_y,dilation,padding,activation, batch_normalize, binary, xnor, params.net.adam, use_bin_output, params.index, antialiasing, share_layer, assisted_excitation, deform, params.train);        
-        printf("make q_conv_layer done \n");
     }
     else{
         layer = make_convolutional_layer(batch,1,h,w,c,n,groups,size,stride_x,stride_y,dilation,padding,activation, batch_normalize, binary, xnor, params.net.adam, use_bin_output, params.index, antialiasing, share_layer, assisted_excitation, deform, params.train);        
     }
     layer.flipped = option_find_int_quiet(options, "flipped", 0);
     layer.dot = option_find_float_quiet(options, "dot", 0);
-    layer.quantization_layer_scale= quantization_layer_scale;
+    layer.quantization_layer_scale= quantization_layer_scale; //q_inserted
     layer.quantization_layer_zeropoint= quantization_layer_zeropoint;
     layer.sway = sway;
     layer.rotate = rotate;
@@ -364,14 +361,14 @@ layer parse_history(list *options, size_params params)
 
 connected_layer parse_connected(list *options, size_params params)
 {
-    int quantization_type = option_find_int(options, "quantization_type",0);
+    int quantization_type = option_find_int(options, "quantization_type",0); //q_inserted
     float quantization_layer_scale = option_find_float(options, "quantization_layer_scale",0);
     int quantization_layer_zeropoint = option_find_int(options, "quantization_layer_zeropoint",1);
     int output = option_find_int(options, "output",1);
     char *activation_s = option_find_str(options, "activation", "logistic");
     ACTIVATION activation = get_activation(activation_s);
     int batch_normalize = option_find_int_quiet(options, "batch_normalize", 0);
-    if(quantization_type){
+    if(quantization_type){ //q_inserted
         connected_layer layer = make_quantized_connected_layer(params.batch, 1, params.inputs, output, activation, batch_normalize,quantization_type);
         layer.quantization_layer_scale= quantization_layer_scale;
         layer.quantization_layer_zeropoint= quantization_layer_zeropoint;
@@ -386,9 +383,9 @@ connected_layer parse_connected(list *options, size_params params)
 
 softmax_layer parse_softmax(list *options, size_params params)
 {
-    int quantization_type = option_find_int(options, "quantization_type",0);
+    int quantization_type = option_find_int(options, "quantization_type",0); //q_inserted
 	int groups = option_find_int_quiet(options, "groups", 1);
-    if(quantization_type){
+    if(quantization_type){ //q_inserted
         softmax_layer layer = make_quantized_softmax_layer(params.batch, params.inputs, groups, quantization_type);
         layer.temperature = option_find_float_quiet(options, "temperature", 1);
         char *tree_file = option_find_str(options, "tree", 0);
@@ -889,7 +886,7 @@ maxpool_layer parse_local_avgpool(list *options, size_params params)
 
 maxpool_layer parse_maxpool(list *options, size_params params)
 {   
-    int quantization_type = option_find_int(options, "quantization_type",0);
+    int quantization_type = option_find_int(options, "quantization_type",0); //q_inserted
     float quantization_layer_scale = option_find_float(options, "quantization_layer_scale",0);
     int quantization_layer_zeropoint = option_find_int(options, "quantization_layer_zeropoint",1);
     int stride = option_find_int(options, "stride",1);
@@ -908,7 +905,7 @@ maxpool_layer parse_maxpool(list *options, size_params params)
     c = params.c;
     batch=params.batch;
     if(!(h && w && c)) error("Layer before [maxpool] layer must output image.", DARKNET_LOC);
-    if (quantization_type){
+    if (quantization_type){ //q_inserted
         printf("init q_maxpool\n");
 
         maxpool_layer layer = make_quantized_maxpool_layer(batch, h, w, c, size, stride_x, stride_y, padding, maxpool_depth, out_channels, antialiasing, avgpool, params.train, quantization_type);
@@ -982,7 +979,7 @@ layer parse_batchnorm(list *options, size_params params)
 
 layer parse_shortcut(list *options, size_params params, network net)
 {
-    int quantization_type = option_find_int(options, "quantization_type",0);
+    int quantization_type = option_find_int(options, "quantization_type",0); //q_inserted
     float quantization_layer_scale = option_find_float(options, "quantization_layer_scale",0);
     int quantization_layer_zeropoint = option_find_int(options, "quantization_layer_zeropoint",1);
     int stride = option_find_int(options, "stride",1);
@@ -1025,7 +1022,7 @@ layer parse_shortcut(list *options, size_params params, network net)
     float **layers_delta = (float **)calloc(n, sizeof(float *));
     float **layers_output_gpu = (float **)calloc(n, sizeof(float *));
     float **layers_delta_gpu = (float **)calloc(n, sizeof(float *));
-    if (quantization_type){
+    if (quantization_type){ //q_inserted
         for (i = 0; i < n; ++i) {
             int index = atoi(l);
             l = strchr(l, ',') + 1;
@@ -1053,7 +1050,7 @@ layer parse_shortcut(list *options, size_params params, network net)
         layers_delta_gpu[i] = params.net.layers[layers[i]].delta_gpu;
     }
 #endif// GPU
-    if (quantization_type){ 
+    if (quantization_type){  //q_inserted
     layer s = make_quantized_shortcut_layer(params.batch, n, layers, sizes, params.w, params.h, params.c,net.layers[layers[0]].out_w,net.layers[layers[0]].out_h,net.layers[layers[0]].out_c, layers_output_uinit8, layers_delta,
         layers_output_gpu, layers_delta_gpu, weights_type, weights_normalization, activation, params.train,quantization_type); // only for 1 layer input
         s.quantization_layer_scale= quantization_layer_scale;
@@ -1250,7 +1247,14 @@ void parse_net_options(list *options, network *net)
     net->quantization_type = option_find_int(options, "quantization_type", 0);
     net->input_scale = option_find_float(options, "input_scale", 0);
     net->input_zeropoint = option_find_int(options, "input_zeropoint", 0);
-    net->max_batches = option_find_int(options, "max_batches", 0);
+    net->start_check_point = option_find_int(options, "start_check_point", 0);
+    net->end_check_point = option_find_int(options, "end_check_point", 0);   
+    net->normalize_mean_0 = option_find_float(options, "normalize_mean_0", 0);
+    net->normalize_mean_1 = option_find_float(options, "normalize_mean_1", 0);
+    net->normalize_mean_2 = option_find_float(options, "normalize_mean_2", 0);
+    net->normalize_var_0 = option_find_float(options, "normalize_var_0", 0);
+    net->normalize_var_1 = option_find_float(options, "normalize_var_1", 0);
+    net->normalize_var_2 = option_find_float(options, "normalize_var_2", 0);    net->max_batches = option_find_int(options, "max_batches", 0);
     net->batch = option_find_int(options, "batch",1);
     net->learning_rate = option_find_float(options, "learning_rate", .001);
     net->learning_rate_min = option_find_float_quiet(options, "learning_rate_min", .00001);
@@ -1511,7 +1515,7 @@ network parse_network_cfg_custom(char *filename, int batch, int time_steps)
             options = s->options;
             int stopbackward = option_find_int_quiet(options, "stopbackward", 0);
             if (stopbackward == 1) {
-                last_stop_backward = count_tmp;
+                last_stop_backward = count_tmp; 
                 printf("last_stop_backward = %d \n", last_stop_backward);
             }
             n_tmp = n_tmp->next;
@@ -1523,7 +1527,10 @@ network parse_network_cfg_custom(char *filename, int batch, int time_steps)
 
     fprintf(stderr, "   layer   filters  size/strd(dil)      input                output\n");
     while(n){
-
+        if(net.end_check_point){
+            if(count >=net.end_check_point)
+                break;
+        }
         params.train = old_params_train;
         if (count < last_stop_backward) params.train = 0;
 
@@ -2243,8 +2250,6 @@ void load_quantized_connected_weights(layer l, FILE *fp, int transpose, int quan
         printf("biases_int32[0]=%d\n",l.biases_int32[0]);
         printf("1\n");
 
-        fread(l.quantization_per_channel_zeropoint, sizeof(int), l.outputs, fp);
-        fread(l.biases, sizeof(float), l.outputs, fp);
         if(transpose){
             transpose_matrix(l.quantized_weights, l.inputs, l.outputs);
         }
@@ -2665,7 +2670,11 @@ void load_weights_upto(network *net, char *filename, int cutoff)
 
 void load_weights(network *net, char *filename)
 {
-    load_weights_upto(net, filename, net->n);
+    if(net->end_check_point) {
+        net->n = net->end_check_point;
+        load_weights_upto(net, filename, net->end_check_point);
+    }
+    else load_weights_upto(net, filename, net->n);
 }
 
 // load network & force - set batch size
