@@ -91,8 +91,8 @@ void forward_maxpool_layer_avx(float *src, float *dst, int *indexes, int size, i
     int pad, int stride, int batch);
 
 void quantized_gemm(int TA, int TB, int M, int N, int K, float ALPHA,
-                    unsigned char *A, int lda,
-                    char *B, int ldb,
+                    char *A, int lda,
+                    unsigned char *B, int ldb,
                     float BETA,
                     int *C, int ldc);
 
@@ -121,7 +121,7 @@ void conv_output_quantization(char *quantized_weight, unsigned char *im2col_inpu
                         int *M0_int32, unsigned char* right_shift, 
                         int layer_zeropoint,
                         unsigned char *quantized_output_uint8, int *biases_int32); //output_int64_version
-void connect_output_quantization(unsigned char *input, char *quantized_weight, int *mm_output,
+void connect_output_quantization( char *quantized_weight,unsigned char *input, int *mm_output,
                         int input_channel, int out_channel,
                        // int out_h,int out_w,
                        // int kernel_w,int kernel_h,

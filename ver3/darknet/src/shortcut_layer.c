@@ -258,7 +258,7 @@ void forward_shortcut_layer(const layer l, network_state state)
     int from_h = state.net.layers[l.index].out_h;
     int from_c = state.net.layers[l.index].out_c;
     char *q_a;
-    char *q_b;
+    unsigned char *q_b;
     int *q_c;
     int m = l.c ;
     int k = 1*1*from_c ;

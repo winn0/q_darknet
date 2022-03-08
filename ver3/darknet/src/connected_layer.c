@@ -308,8 +308,8 @@ void forward_connected_layer(connected_layer l, network_state state)
     int n = l.outputs;
     float* quantized_output_float;
     if(l.quantization_type){
-        unsigned char *q_a = state.quantized_input;
-        char *q_b = l.quantized_weights;
+        char *q_a = l.quantized_weights;
+        unsigned char *q_b = state.quantized_input;
         int *q_c = l.quantized_output;
         // printf("init connected gemm\n");
         for(i = 0 ; i<n; i++)q_c[i]=0;

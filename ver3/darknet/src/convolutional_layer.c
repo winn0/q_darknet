@@ -1622,7 +1622,7 @@ void forward_convolutional_layer(convolutional_layer l, network_state state)
     float *b;
     float *c;
     char *q_a;
-    char *q_b;
+    unsigned char *q_b;
     int *q_c;
     float *im;
     unsigned char *q_im;

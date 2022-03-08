@@ -1990,7 +1990,7 @@ void gemm_nn(int M, int N, int K, float ALPHA,
 }
 void quantized_gemm_nn(int M, int N, int K, float ALPHA,
     char *A, int lda,
-    char *B, int ldb,
+    unsigned char *B, int ldb,
     int *C, int ldc)
 {
     int i, j, k;
@@ -2650,8 +2650,8 @@ void convolution_repacked(uint32_t *packed_input, uint32_t *packed_weights, floa
 }
 
 void quantized_gemm_nt(int M, int N, int K, float ALPHA,
-        unsigned char *A, int lda,
-        char *B, int ldb,
+        char *A, int lda,
+        unsigned char *B, int ldb,
         int *C, int ldc)
 {
     int i,j,k;
@@ -2659,7 +2659,7 @@ void quantized_gemm_nt(int M, int N, int K, float ALPHA,
         for(j = 0; j < N; ++j){
             PUT_IN_REGISTER int sum = 0;
             for(k = 0; k < K; ++k){
-                sum += (int)ALPHA*A[i*lda+k]*B[j*ldb + k];
+                sum += (int)ALPHA*B[i*lda+k]*A[j*ldb + k];
                // printf("A:%d\n",A[i*lda+k]);
                // printf("B:%d\n",B[j*ldb + k]);
                // printf("add:%d\n",ALPHA*A[i*lda+k]*B[j*ldb + k]);
@@ -2759,8 +2759,8 @@ void gemm_cpu(int TA, int TB, int M, int N, int K, float ALPHA,
     }
 }
 void quantized_gemm(int TA, int TB, int M, int N, int K, float ALPHA,
-        unsigned char *A, int lda,
-        char *B, int ldb,
+        char *A, int lda,
+        unsigned char *B, int ldb,
         float BETA,
         int *C, int ldc)
 {
@@ -2949,7 +2949,7 @@ void conv_output_quantization(char *quantized_weight, unsigned char *im2col_inpu
 
 
 
-void connect_output_quantization(unsigned char *input, char *quantized_weight, int *mm_output,
+void connect_output_quantization( char *quantized_weight,unsigned char *input, int *mm_output,
                         int input_channel, int out_channel,
                        // int out_h,int out_w,
                        // int kernel_w,int kernel_h,
