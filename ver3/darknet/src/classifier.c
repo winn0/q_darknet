@@ -907,7 +907,7 @@ void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *fi
                 normalize_cpu(cropped.data, mean, var, 1, 3, im.w*im.h);
                 
                 //input quantization can combine with normalize
-                //for (i=0 ;i<net.h*net.w*net.c; i++)quantized_X[i] = (unsigned char)(round(cropped.data[i]/net.input_scale)+net.input_zeropoint);
+                for (i=0 ;i<net.h*net.w*net.c; i++)quantized_X[i] = (unsigned char)(round(cropped.data[i]/net.input_scale)+net.input_zeropoint);
     
     
                 //normalize_cpu(im.data, mean, var, 1, 3, im.w*im.h);
