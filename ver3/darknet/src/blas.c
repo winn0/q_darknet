@@ -341,6 +341,26 @@ void  fill_cpu(int N, float ALPHA, float *X, int INCX)
         for (i = 0; i < N; ++i) X[i*INCX] = ALPHA;
     }
 }
+void fill_cpu_int(int N, int ALPHA, int *X, int INCX)
+{
+    int i;
+    if (INCX == 1 && ALPHA == 0) {
+        memset(X, 0, N * sizeof(int));
+    }
+    else {
+        for (i = 0; i < N; ++i) X[i*INCX] = ALPHA;
+    }
+}
+void fill_cpu_uchar(int N, int ALPHA, unsigned char *X, int INCX)
+{
+    int i;
+    if (INCX == 1 && ALPHA == 0) {
+        memset(X, 0, N * sizeof(char));
+    }
+    else {
+        for (i = 0; i < N; ++i) X[i*INCX] = ALPHA;
+    }
+}
 void deinter_cpu(int NX, float *X, int NY, float *Y, int B, float *OUT)
 {
     int i, j;

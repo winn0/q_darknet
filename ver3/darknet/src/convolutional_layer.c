@@ -1633,6 +1633,7 @@ void forward_convolutional_layer(convolutional_layer l, network_state state)
         for (j = 0; j < l.groups; ++j)
         {
             if(state.quantization_type){
+                fill_cpu_int(l.outputs*l.batch, 0, l.quantized_output, 1);
                 q_a = l.quantized_weights +j*l.nweights / l.groups;
                 q_b = (unsigned char*)state.workspace;
                 q_c = l.quantized_output +(i*l.groups + j)*n*m;

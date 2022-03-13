@@ -308,6 +308,7 @@ void forward_connected_layer(connected_layer l, network_state state)
     int n = l.outputs;
     float* quantized_output_float;
     if(l.quantization_type){
+        fill_cpu_int(l.outputs*l.batch, 0, l.quantized_output, 1);
         char *q_a = l.quantized_weights;
         unsigned char *q_b = state.quantized_input;
         int *q_c = l.quantized_output;

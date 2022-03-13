@@ -288,6 +288,7 @@ void forward_shortcut_layer(const layer l, network_state state)
     else {
         if (l.quantization_type){
             // printf(" init shortcut covolution layer\n");
+            fill_cpu_int(size, 0, l.quantized_output, 1);
             q_a = l.quantized_weights;
             q_b = (unsigned char*)state.workspace;
             q_c = l.quantized_output;

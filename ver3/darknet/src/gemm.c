@@ -2377,7 +2377,7 @@ void quantized_activate_array_cpu_custom(unsigned char *x, const int n, const AC
     }
     else {
         for (i = 0; i < n; ++i) {
-            x[i] = quantized_activate(x[i], a, quantization_layer_zeropoint);
+            x[i] = (unsigned char)quantized_activate(x[i], a, quantization_layer_zeropoint);
         }
     }
 }

@@ -111,7 +111,7 @@ void quantized_im2col_cpu_ext(const unsigned char* data_im, const int channels,
                 for (output_rows = output_h; output_rows; output_rows--) {
                     if (!is_a_ge_zero_and_a_lt_b(input_row, height)) {
                         for (output_col = output_w; output_col; output_col--) {
-                            *(data_col++) = input_zeropoint;
+                            *(data_col++) = (unsigned char)input_zeropoint;
                         }
                     }
                     else {
@@ -121,7 +121,7 @@ void quantized_im2col_cpu_ext(const unsigned char* data_im, const int channels,
                                 *(data_col++) = data_im[input_row * width + input_col];
                             }
                             else {
-                                *(data_col++) = input_zeropoint;
+                                *(data_col++) = (unsigned char)input_zeropoint;
                             }
                             input_col += stride_w;
                         }
