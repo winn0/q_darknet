@@ -83,8 +83,8 @@ def make_fuse_dict(model,model_name):
                         fusion_layer_dict[class_path___]=fusion_list    
     return fusion_layer_dict
 
-def fuse_model(model,model_name):
-    fusion_layer_dict= make_fuse_dict(model,model_name)
+def fuse_model(model):
+    fusion_layer_dict= make_fuse_dict(model,'model')
     print(fusion_layer_dict)
     for key in fusion_layer_dict:
         for fuse_group in fusion_layer_dict[key]:        

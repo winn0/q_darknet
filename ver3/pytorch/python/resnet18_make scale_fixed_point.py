@@ -18,11 +18,6 @@ model_filepath = os.path.join(model_dir, model_filename)
 quantized_model_filepath = os.path.join(model_dir, quantized_model_filename)
 quantized_model_filepath_jit = os.path.join(model_dir, quantized_model_filename_jit)
 quantized_model_edited_filepath = os.path.join(model_dir, quantized_model_edited_filename)
-def fuse_model(model,model_name):
-    fusion_layer_dict= make_fuse_dict(model,model_name)
-    for key in fusion_layer_dict:
-        for fuse_group in fusion_layer_dict[key]:        
-            torch.quantization.fuse_modules(eval(key), [fuse_group], inplace=True) 
 
 num_classes = 10
 cuda_device = torch.device("cuda:0")
@@ -36,7 +31,7 @@ quantized_model = QuantizedResNet18(model_fp32=model)
 quantization_config = torch.quantization.get_default_qconfig("fbgemm")
 
 quantized_model.qconfig = quantization_config
-fuse_model(quantized_model,'quantized_model')
+fuse_model(quantized_model)
 torch.quantization.prepare_qat(quantized_model, inplace=True)
 quantized_model.to(cpu_device)    
 quantized_model = torch.quantization.convert(quantized_model, inplace=True)

@@ -26,7 +26,7 @@ train_loader, test_loader = prepare_dataloader(num_workers=0, train_batch_size=1
     
 # Train model.
 print("Training Model...")
-model = train_model(model=model, train_loader=train_loader, test_loader=test_loader, device=cuda_device, learning_rate=1e-1, num_epochs=10)
+model = train_model(model=model, train_loader=train_loader, test_loader=test_loader, device=cuda_device, learning_rate=1e-1, num_epochs=200)
 # Save model.
 save_model(model=model, model_dir=model_dir, model_filename=model_filename)
     
@@ -46,11 +46,6 @@ model.train()
 fused_model.train()
 
 #QAT
-def fuse_model(model,model_name):
-    fusion_layer_dict= make_fuse_dict(model,model_name)
-    for key in fusion_layer_dict:
-        for fuse_group in fusion_layer_dict[key]:        
-            torch.quantization.fuse_modules(eval(key), [fuse_group], inplace=True) 
 model_dir = "saved_models"
 model_filename = "q_resnet18_cifar10.pt"
 fusioned_model_filename = "q_fusioned_resnet18_cifar10.pt"
@@ -65,13 +60,13 @@ quantized_model = QuantizedResNet18(model_fp32=fused_model)
 quantization_config = torch.quantization.get_default_qconfig("fbgemm")
 
 quantized_model.qconfig = quantization_config
-fuse_model(quantized_model,'quantized_model')
+fuse_model(quantized_model)
 torch.quantization.prepare_qat(quantized_model, inplace=True)
 
 print("Training QAT Model...")
 quantized_model.train()
 
-train_model(model=quantized_model, train_loader=train_loader, test_loader=test_loader, device=cuda_device, learning_rate=1e-3, num_epochs=10)
+train_model(model=quantized_model, train_loader=train_loader, test_loader=test_loader, device=cuda_device, learning_rate=1e-3, num_epochs=20)
 quantized_model.to(cpu_device)    
 quantized_model = torch.quantization.convert(quantized_model, inplace=True)
 
