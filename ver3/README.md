@@ -35,7 +35,9 @@ softmax
 
 # python
 ## version
-python 3.7.11 pytorch 1.10.2 CUDA 11.6
+python 3.7.11 
+pytorch 1.10.2 
+CUDA 11.6
 ## le5
 le5 mnist model is referenced from https://velog.io/@jaewonalive/MNIST-Quantization-Aware-Training-example
 
