@@ -1,6 +1,11 @@
 # DarkNet Classifier Ver.3 (quantized Resnet18 CIFAR10, Lenet5 Mnist) 
 fixed point nomalization is done in python
-
+## Environment
+This code was developed and testsed with
+ubuntu 18.04.6
+python 3.7.11 
+pytorch 1.10.2 
+CUDA 11.6
 ## DarkNet command
 
 ### lenet5
@@ -34,10 +39,7 @@ shortcut
 softmax
 
 # python
-## version
-python 3.7.11 
-pytorch 1.10.2 
-CUDA 11.6
+
 ## le5
 le5 mnist model is referenced from https://velog.io/@jaewonalive/MNIST-Quantization-Aware-Training-example
 
