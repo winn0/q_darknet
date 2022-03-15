@@ -4,11 +4,25 @@ fixed point nomalization is done in python
 ## DarkNet command
 
 ### lenet5
+
+#### classify
 ./darknet classifier predict cfg/mnist.data cfg/mnist_lenet.cfg backup/merged_weights_le5_mnist_normalized data/mnist_images/test/0_Five.png
 
+#### validate
+##### setup for validate
+python darknet/data/mnist_images/make_mnist_list.py 
+##### command
+./darknet classifier valid cfg/mnist.data cfg/mnist_lenet.cfg backup/merged_weights_le5_mnist_normalized
 ### resnet18
-./darknet classifier predict cfg/cifar10.data cfg/quantized_resnet18.cfg backup/merged_weights_resnet18_edited_normalized data/CIFAR10_images/bird/0100.jpg
 
+#### classify
+./darknet classifier predict cfg/cifar10.data cfg/quantized_resnet18.cfg backup/merged_weights_resnet18_edited_normalized data/CIFAR10_images/bird/0100.jpg
+setup for validate
+#### validate
+##### setup for validate
+python darknet/data/CIFAR10_images/make_cifar10_list.py 
+##### command
+./darknet classifier valid cfg/cifar10.data cfg/quantized_resnet18.cfg backup/merged_weights_resnet18_edited_normalized
 
 ## Avaiable operation
 
@@ -20,7 +34,8 @@ shortcut
 softmax
 
 # python
-
+## version
+python 3.7.11 pytorch 1.10.2 CUDA 11.6
 ## le5
 le5 mnist model is referenced from https://velog.io/@jaewonalive/MNIST-Quantization-Aware-Training-example
 
