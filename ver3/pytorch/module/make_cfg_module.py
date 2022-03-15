@@ -65,7 +65,7 @@ def make_layer_dict(module,model_dict):
         block_dict["stride"] =str(module.stride[0])
         block_dict["activation"] ="relu"
         
-        model_dict["before_layer_type"]=QuantizedConvReLU2d[0]
+        model_dict["before_layer_type"]=module._get_name()
         model_dict["before_layer_quantization_type"]=block_dict["quantization_type"]
         model_dict["before_layer_zeropoint"]=block_dict["quantization_layer_zeropoint"]
         model_dict["before_layer_scale"]=block_dict["quantization_layer_scale"]       
@@ -84,7 +84,7 @@ def make_layer_dict(module,model_dict):
         block_dict["stride"] =str(module.stride[0])
         block_dict["activation"] ="linear"
         
-        model_dict["before_layer_type"]=QuantizedConvReLU2d[0]
+        model_dict["before_layer_type"]=module._get_name()
         model_dict["before_layer_quantization_type"]=block_dict["quantization_type"]
         model_dict["before_layer_zeropoint"]=block_dict["quantization_layer_zeropoint"]
         model_dict["before_layer_scale"]=block_dict["quantization_layer_scale"]       
@@ -92,7 +92,7 @@ def make_layer_dict(module,model_dict):
 
     if module._get_name() in ReLU:
         layer_num=model_dict["layer_count"]
-        if model_dict["before_layer_type"] in QuantizedConvReLU2d:
+        if model_dict["before_layer_type"] in QuantizedConv2d:
             model_dict[layer_num]["activation"] = "relu"
         if model_dict["before_layer_type"] in QuantizedLinear:
             model_dict[layer_num]["activation"] = "relu" 
@@ -108,7 +108,7 @@ def make_layer_dict(module,model_dict):
         block_dict["size"] =str(module.kernel_size)
         block_dict["pad"] =str(module.padding)
         block_dict["stride"] =str(module.stride)
-        model_dict["before_layer_type"]=MaxPool2d[0]
+        model_dict["before_layer_type"]=module._get_name()
         model_dict[layer_num]=block_dict
         
     if module._get_name() in shortcut:
@@ -121,7 +121,7 @@ def make_layer_dict(module,model_dict):
         block_dict["quantization_layer_zeropoint"] =model_dict["before_layer_zeropoint"]
         block_dict["from"] =str(shortcut_from)
         
-        model_dict["before_layer_type"]=shortcut[0]
+        model_dict["before_layer_type"]=module._get_name()
         model_dict[layer_num]=block_dict
         
     if module._get_name() in QuantizedLinear:
@@ -133,7 +133,7 @@ def make_layer_dict(module,model_dict):
         block_dict["quantization_layer_scale"] =str(module.scale)
         block_dict["quantization_layer_zeropoint"] =str(module.zero_point)
         block_dict["output"] =str(module.out_features)
-        model_dict["before_layer_type"]=QuantizedLinear[0]
+        model_dict["before_layer_type"]=module._get_name()
         block_dict["activation"] ="linear"
         model_dict[layer_num]=block_dict
         
@@ -144,7 +144,7 @@ def make_layer_dict(module,model_dict):
         block_dict["layer_type"]="[softmax]"
         block_dict["groups"]="1"
         block_dict["quantization_type"] =model_dict["before_layer_quantization_type"]
-        model_dict["before_layer_type"]=softmax[0]    
+        model_dict["before_layer_type"]=module._get_name()   
         model_dict[layer_num]=block_dict
     return model_dict #,last_top_layer
 def make_cfg_from_pytorch(model,cfgfile_name,input_width,input_height,input_channel,mean_list,std_list):
