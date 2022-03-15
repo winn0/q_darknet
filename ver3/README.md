@@ -2,10 +2,10 @@
 fixed point nomalization is done in python
 ## Environment
 This code was developed and testsed with
-ubuntu 18.04.6
-python 3.7.11 
-pytorch 1.10.2 
-CUDA 11.6
+* ubuntu 18.04.6
+* python 3.7.11 
+* pytorch 1.10.2 
+* CUDA 11.6
 ## DarkNet command
 
 ### lenet5
