@@ -276,7 +276,10 @@ void forward_shortcut_layer(const layer l, network_state state)
                 //scale nomalize is required state  state.quantized_input_scale and state.net.layers[l.index].quantization_layer_scale
                 //assert(state.quantized_input_scale == l.quantization_layer_scale && state.quantized_input_zeropoint == l.quantization_layer_zeropoint);
                // assert(state.quantized_input_scale == state.net.layers[l.index].quantization_layer_scale && state.quantized_input_zeropoint == state.net.layers[l.index].quantization_layer_zeropoint);
-                l.quantized_output_uint8[i] = state.quantized_input[i] + state.net.layers[l.index].quantized_output_uint8[i];
+                int temp= (int)state.quantized_input[i] + (int)state.net.layers[l.index].quantized_output_uint8[i];
+                assert(temp>=0);    
+                if(temp>=255) l.quantized_output_uint8[i] = 255;
+                else l.quantized_output_uint8[i]=(unsigned char) temp;
             }
         }
         else{
@@ -287,8 +290,10 @@ void forward_shortcut_layer(const layer l, network_state state)
     }
     else {
         if (l.quantization_type){
-            // printf(" init shortcut covolution layer\n");
-            fill_cpu_int(size, 0, l.quantized_output, 1);
+             // printf(" init shortcut covolution layer\n");
+             // printf(" from_c :%d from_h :%d from_w :%d \n l.c:%d l.h:%d  l.w:%d \n",from_c , from_h , from_w , l.c, l.h,  l.w );
+             // printf(" m:%d, n:%d, k:%d\n",m,n,k);
+            fill_cpu_int(size,0,l.quantized_output, 1);
             q_a = l.quantized_weights;
             q_b = (unsigned char*)state.workspace;
             q_c = l.quantized_output;
@@ -305,6 +310,12 @@ void forward_shortcut_layer(const layer l, network_state state)
                 2, 2, // stride (h, w)
                 1, 1, // dilation (h, w)
                 q_b,state.net.layers[l.index].quantization_layer_zeropoint);   // output
+            for(i = 0; i < 16; ++i){
+              //   printf("shortcut conv q_a[%d]:%d\n",i,q_a[i]);            
+            }
+            for(i = 0; i < 16; ++i){
+                // printf("shortcut conv q_b[%d]:%d\n",i,q_b[i]);            
+            }
            int temp_sum =0;
             for(i = 0; i < 64; ++i){
                 // printf("shortcut conv q_b[%d]:%d\n",i*16+9,q_b[i*16+9]); 
@@ -316,7 +327,7 @@ void forward_shortcut_layer(const layer l, network_state state)
            // assert(state.quantized_input_scale == state.net.layers[l.index].quantization_layer_scale && state.quantized_input_zeropoint == state.net.layers[l.index].quantization_layer_zeropoint);
             quantized_gemm(0, 0, m, n, k, 1, q_a, k, q_b, n, 1, q_c, n);
             for(i = 0; i < 16; ++i){
-                // printf("shortcut conv q_c[%d]:%d\n",i,q_c[i]);            
+                 //printf("shortcut conv q_c[%d]:%d\n",i,q_c[i]);            
             }
             conv_output_quantization(q_a,q_b,q_c,
                 from_c,l.c,
@@ -331,11 +342,15 @@ void forward_shortcut_layer(const layer l, network_state state)
             }
             #pragma omp parallel for
             for(i = 0; i < size; ++i){
-                l.quantized_output_uint8[i] = state.quantized_input[i] + quantized_output_uint8_to_be_added[i];
+                int temp= (int)state.quantized_input[i]  + (int)quantized_output_uint8_to_be_added[i];
+                assert(temp>=0);    
+                if(temp>=255) l.quantized_output_uint8[i] = 255;
+                else l.quantized_output_uint8[i]=(unsigned char) temp;
             }
             for(i = 0; i < 16; ++i){
                 // printf("shortcut conv output[%d]:%d\n",i,l.quantized_output_uint8[i]);
             }
+            free(quantized_output_uint8_to_be_added);
         }
         else{
             shortcut_multilayer_cpu(l.outputs * l.batch, l.outputs, l.batch, l.n, l.input_sizes, l.layers_output, l.output, state.input, l.weights, l.nweights, l.weights_normalization);

@@ -121,7 +121,7 @@ void conv_output_quantization(char *quantized_weight, unsigned char *im2col_inpu
                         int *M0_int32, unsigned char* right_shift, 
                         int layer_zeropoint,
                         unsigned char *quantized_output_uint8, int *biases_int32); //output_int64_version
-void connect_output_quantization( char *quantized_weight,unsigned char *input, int *mm_output,
+void connect_output_quantization(char *quantized_weight,unsigned char *input,  int *mm_output,
                         int input_channel, int out_channel,
                        // int out_h,int out_w,
                        // int kernel_w,int kernel_h,
@@ -130,12 +130,12 @@ void connect_output_quantization( char *quantized_weight,unsigned char *input, i
                         int layer_zeropoint,
                         unsigned char *quantized_output_uint8, int *biases_int32);
 void quantized_input_accumulate(int M, int N, int K, // out_channels out_w*out*h  input_channel*kernel_w*kernel_h
-    unsigned char *im2col_input, //input 
-    int *input_acc); // output
+                                unsigned char *im2col_input, //input 
+                                int *input_acc); // output
 void quantized_weight_accumulate(int N, int K, //kernel_w*kernel_h  input_channel  
-    int channel_num,
-    char *quantized_weight, //input 
-    int *quantized_weight_acc); // output
+                                int channel_num,
+                                char *quantized_weight, //input 
+                                int *quantized_weight_acc); // output
 void gemm_cpu(int TA, int TB, int M, int N, int K, float ALPHA,
         float *A, int lda,
         float *B, int ldb,

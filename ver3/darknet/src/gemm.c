@@ -1994,14 +1994,21 @@ void quantized_gemm_nn(int M, int N, int K, float ALPHA,
     int *C, int ldc)
 {
     int i, j, k;
+    // printf("M:%d N:%d K:%d",M,N,K);
     for (i = 0; i < M; ++i) {
         for (k = 0; k < K; ++k) {
             PUT_IN_REGISTER char A_PART = (char)ALPHA * A[i * lda + k];
             for (j = 0; j < N; ++j) {
                 C[i*ldc + j] += (int)A_PART*B[k*ldb + j];
+                // if(((i*ldc + j)==0)&&(k==0)){
+                //     printf("A[%d]:%d\n",i * lda + k,A[i * lda + k]);
+                //     printf("B[%d]:%d\n",k*ldb + j,B[k*ldb + j]);
+                //     printf("C[%d]:%d\n",i*ldc + j,C[i*ldc + j]);
+                // }
             }
         }
     }
+    // printf("C[%d]:%d\n",0,C[0]);
 }
 void gemm_nn_fast(int M, int N, int K, float ALPHA,
     float *A, int lda,
@@ -2377,7 +2384,7 @@ void quantized_activate_array_cpu_custom(unsigned char *x, const int n, const AC
     }
     else {
         for (i = 0; i < n; ++i) {
-            x[i] = (unsigned char)quantized_activate(x[i], a, quantization_layer_zeropoint);
+            x[i] = quantized_activate(x[i], a, quantization_layer_zeropoint);
         }
     }
 }
@@ -2764,7 +2771,7 @@ void quantized_gemm(int TA, int TB, int M, int N, int K, float ALPHA,
         float BETA,
         int *C, int ldc)
 {
-    //printf("cpu: %d %d %d %d %d %f %d %d %f %d\n",TA, TB, M, N, K, ALPHA, lda, ldb, BETA, ldc);
+    // printf("cpu: %d %d %d %d %d %f %d %d %f %d\n",TA, TB, M, N, K, ALPHA, lda, ldb, BETA, ldc);
     if (BETA != 1){
         int i, j;
         for(i = 0; i < M; ++i){
@@ -2791,6 +2798,7 @@ void quantized_gemm(int TA, int TB, int M, int N, int K, float ALPHA,
                 quantized_gemm_nt(1, N, K, ALPHA, A + t*lda, lda, B, ldb, C + t*ldc, ldc);
             else
                 gemm_tt(1, N, K, ALPHA, A + t, lda, B, ldb, C + t*ldc, ldc);
+            // printf("C[0]__:%d\n",C[0]);
         }
     }
 }
@@ -2808,55 +2816,24 @@ void quantized_input_accumulate(int M, int N, int K, // out_channels out_w*out*h
         }
     }
 }
+
 void quantized_weight_accumulate(int N, int K, //kernel_w*kernel_h  input_channel  
     int channel_num,
     char *quantized_weight, //input 
     int *quantized_weight_acc) // output
 {
-    int j, k;
-    quantized_weight_acc[channel_num]=0;
-    for (k = 0; k < K; ++k) {
-        for (j = 0; j < N; ++j) {
+    int i,j, k;
+    for (i=0; i<channel_num; ++i){
+    
+        for (k = 0; k < K; ++k) {
+            for (j = 0; j < N; ++j) {
 
-            quantized_weight_acc[channel_num] += (int)quantized_weight[channel_num*N*K + k*N + j];
+                quantized_weight_acc[i] += (int)quantized_weight[i*N*K + k*N + j];
+            }
         }
     }
 }
 
-// void conv_output_quantization(char *quantized_weight, unsigned char *im2col_input, int *mm_output,
-//                         int input_channel, int out_channel,
-//                         int out_h,int out_w,
-//                         int kernel_w,int kernel_h,
-//                         float input_scale,int input_zeropoint,
-//                         float *kernel_scale, int *kernel_zeropoint,
-//                         float layer_scale, int layer_zeropoint,
-//                         float *output_float)
-// {   
-//     int kernel_size = kernel_w*kernel_h;
-//     int output_channel_size= out_h*out_w;
-//     int N =kernel_size*input_channel;
-//     int * quantized_input_acc = (int*)xcalloc(output_channel_size*out_channel,sizeof(int));
-//     int * quantized_weight_acc = (int*)xcalloc(out_channel,sizeof(int));
-//     quantized_input_accumulate(out_channel,output_channel_size,input_channel*kernel_w*kernel_h,im2col_input,quantized_input_acc);
-//     printf("quantized_input_acc[0]:%d\n",quantized_input_acc[0]); 
-//     printf("quantized_input_acc[1]:%d\n",quantized_input_acc[1]); 
-//     printf("quantized_input_acc[2]:%d\n",quantized_input_acc[2]); 
-//     printf("quantized_input_acc[3]:%d\n",quantized_input_acc[3]); 
-
-//     for(int i=0;i<out_channel;i++){
-//         quantized_weight_accumulate(kernel_size, input_channel, i, quantized_weight, quantized_weight_acc); // output    
-//        float M= input_scale*kernel_scale[i]/layer_scale; 
-//         for(int j =0; j<output_channel_size; j++){
-        
-
-//         output_float[i*output_channel_size+j] = (float)layer_zeropoint+M*(float)((int)N*input_zeropoint*kernel_zeropoint[i] \
-//             - (int)input_zeropoint*quantized_weight_acc[i]- (int)quantized_input_acc[i*output_channel_size+j]*kernel_zeropoint[i]+mm_output[i*output_channel_size+j]); 
-//         }
-
-//     }
-//     //free(quantized_input_acc);
-//     //free(quantized_weight_acc);
-// }
 void fixed_nomalization(float input_scale, float* kernel_scale, float layer_scale,int out_channel,unsigned int *M_0, int *right_shift){
     int i;
     for(i=0; i<out_channel; i++){
@@ -2907,9 +2884,9 @@ void conv_output_quantization(char *quantized_weight, unsigned char *im2col_inpu
     int kernel_size = kernel_w*kernel_h;
     int output_channel_size= out_h*out_w;
     int N =kernel_size*input_channel;
-    int * quantized_input_acc = (int*)xcalloc(output_channel_size*out_channel,sizeof(int));
-    int * quantized_weight_acc = (int*)xcalloc(out_channel,sizeof(int));
+    int * quantized_weight_acc;
     int kernel_nonzero=0;
+    int * quantized_input_acc;
     for ( i=0; i<out_channel; i++){ //kernel zeropoint check
         if(kernel_zeropoint[i]) {
             kernel_nonzero =1;
@@ -2917,39 +2894,55 @@ void conv_output_quantization(char *quantized_weight, unsigned char *im2col_inpu
         }
     }
     if (kernel_nonzero){
+        quantized_input_acc = (int*)xcalloc(output_channel_size*out_channel,sizeof(int));
+        fill_cpu_int(output_channel_size*out_channel, 0,quantized_input_acc, 1);
         quantized_input_accumulate(out_channel,output_channel_size,input_channel*kernel_w*kernel_h,im2col_input,quantized_input_acc);
     }
-    else{
-        for( i=0; i<output_channel_size*out_channel; i++) quantized_input_acc[i]=0;
+    if (input_zeropoint) {
+        quantized_weight_acc = (int*)xcalloc(out_channel,sizeof(int));
+        fill_cpu_int(out_channel, 0,quantized_weight_acc, 1);
+        quantized_weight_accumulate(kernel_size, input_channel, out_channel, quantized_weight, quantized_weight_acc); 
     }
+    // output    
     int64_t round_mask=1;
     for(i=0;i<out_channel;i++){
-        if (input_zeropoint) quantized_weight_accumulate(kernel_size, input_channel, i, quantized_weight, quantized_weight_acc); // output    
-        else quantized_weight_acc[i] =0;
         int64_t temp_output=0;
         for(j =0; j<output_channel_size; j++){   
-        if(kernel_nonzero || input_zeropoint) temp_output= (int64_t)(N*input_zeropoint*kernel_zeropoint[i]) -(int64_t)(input_zeropoint*quantized_weight_acc[i])- (int64_t)(quantized_input_acc[i*output_channel_size+j]*kernel_zeropoint[i])+(int64_t)(mm_output[i*output_channel_size+j])+(int64_t)(biases_int32[i]); 
-            else temp_output = (int64_t)(mm_output[i*output_channel_size+j]+biases_int32[i]); 
-
+        if(kernel_nonzero&&input_zeropoint) temp_output= (int64_t)(N*input_zeropoint*kernel_zeropoint[i]) -(int64_t)(quantized_input_acc[i*output_channel_size+j]*kernel_zeropoint[i]) - (int64_t)(input_zeropoint*quantized_weight_acc[i]) + (int64_t)(mm_output[i*output_channel_size+j]) + (int64_t)(biases_int32[i]); 
+        else if(kernel_nonzero) temp_output = (int64_t)(mm_output[i*output_channel_size+j]) - (int64_t)(quantized_input_acc[i*output_channel_size+j]*kernel_zeropoint[i]) + (int64_t)(biases_int32[i]); 
+        else if(input_zeropoint) temp_output= (int64_t)(mm_output[i*output_channel_size+j])- (int64_t)(input_zeropoint*quantized_weight_acc[i]) + (int64_t)(biases_int32[i]); 
+        else temp_output = (int64_t)(mm_output[i*output_channel_size+j])+(int64_t)(biases_int32[i]); 
+            // if(i==0&&j<=9)printf("1:%d\n",N*input_zeropoint*kernel_zeropoint[i]);
+            // if(i==0&&j<=9)printf("2:%d\n",input_zeropoint*quantized_weight_acc[i]);
+            // if(i==0&&j<=9)printf("3:%d\n",quantized_input_acc[i*output_channel_size+j]*kernel_zeropoint[i]);
+            // if(i==0&&j<=9)printf("4:%d\n",mm_output[i*output_channel_size+j]);
+            // if(i==0&&j<=9)printf("biases_int32:%d\n",biases_int32[i]);
+            // if(i==0&&j<=9)printf("temp_output1:%lld\n",temp_output);
 
             //int64 multiply
             temp_output*=(int64_t)M0_int32[i];
+            // if(i==0&&j<=9)printf("M0_int32:%d\n",M0_int32[i]);
+            // if(i==0&&j<=9)printf("temp_output2:%lld\n",temp_output);
             //left shift
             if ( temp_output &(round_mask<<(right_shift[i]-1))) temp_output=(temp_output>>right_shift[i])+1;   
-            else temp_output=(temp_output>>right_shift[i]);               
+            else temp_output=(temp_output>>right_shift[i]);     
+            // if(i==0&&j<=9)printf("temp_output3:%lld\n",temp_output);          
             //clamp
             if(temp_output>=255) quantized_output_uint8[i*output_channel_size+j]= 255;
             else if(temp_output<=0) quantized_output_uint8[i*output_channel_size+j]= (unsigned char)(layer_zeropoint);  
             else quantized_output_uint8[i*output_channel_size+j]=(unsigned char)(temp_output)+(unsigned char)(layer_zeropoint);
+            // if(i==0&&j<=9)printf("q_out:%d\n",quantized_output_uint8[i*output_channel_size+j]); 
 
 
         }
     }
+    if(kernel_nonzero) free(quantized_input_acc);
+    if(input_zeropoint) free(quantized_weight_acc);
 }
 
 
 
-void connect_output_quantization( char *quantized_weight,unsigned char *input, int *mm_output,
+void connect_output_quantization(char *quantized_weight, unsigned char *input, int *mm_output,
                         int input_channel, int out_channel,
                        // int out_h,int out_w,
                        // int kernel_w,int kernel_h,
@@ -2962,7 +2955,7 @@ void connect_output_quantization( char *quantized_weight,unsigned char *input, i
     int i;
     int64_t round_mask=1;
     unsigned int quantized_input_acc = 0;
-    int * quantized_weight_acc = (int*)xcalloc(out_channel,sizeof(int));
+    int * quantized_weight_acc;
     int kernel_nonzero=0;
     for ( i=0; i<out_channel; i++){ //kernel zeropoint check
         if(kernel_zeropoint[i]) {
@@ -2973,15 +2966,17 @@ void connect_output_quantization( char *quantized_weight,unsigned char *input, i
     if (kernel_nonzero) {
         for(i=0; i<input_channel; i++) quantized_input_acc+=(unsigned int) input[i];   
     }
+    if (input_zeropoint) {
+        quantized_weight_acc = (int*)xcalloc(out_channel,sizeof(int));
+        fill_cpu_int(out_channel, 0,quantized_weight_acc, 1);
+        quantized_weight_accumulate(1, input_channel, out_channel, quantized_weight, quantized_weight_acc); 
+    }
     for(i=0;i<out_channel;i++){
-        int64_t temp_output=0;
-        
-        if (input_zeropoint) quantized_weight_accumulate(1, input_channel, i, quantized_weight, quantized_weight_acc); // output 
-        else quantized_weight_acc[i] =0;
-        
-        if(kernel_nonzero || input_zeropoint) temp_output= (int64_t)(N*input_zeropoint*kernel_zeropoint[i]) -(int64_t)(input_zeropoint*quantized_weight_acc[i])- (int64_t)(quantized_input_acc*kernel_zeropoint[i])+(int64_t)(mm_output[i])+(int64_t)(biases_int32[i]); 
+        int64_t temp_output=0;    
+        if(kernel_nonzero&&input_zeropoint) temp_output= (int64_t)(N*input_zeropoint*kernel_zeropoint[i]) -(int64_t)(quantized_input_acc*kernel_zeropoint[i]) - (int64_t)(input_zeropoint*quantized_weight_acc[i]) + (int64_t)(mm_output[i]) + (int64_t)(biases_int32[i]); 
+        else if(kernel_nonzero) temp_output = (int64_t)(mm_output[i]) - (int64_t)(quantized_input_acc*kernel_zeropoint[i]) + (int64_t)(biases_int32[i]); 
+        else if(input_zeropoint) temp_output= (int64_t)(mm_output[i])- (int64_t)(input_zeropoint*quantized_weight_acc[i]) + (int64_t)(biases_int32[i]); 
         else temp_output = (int64_t)(mm_output[i])+(int64_t)(biases_int32[i]); 
-
         temp_output*=(int64_t)M0_int32[i];
         //left shift
         if ( temp_output &(round_mask<<(right_shift[i]-1))) temp_output=(temp_output>>right_shift[i]) +1;   
@@ -2992,7 +2987,8 @@ void connect_output_quantization( char *quantized_weight,unsigned char *input, i
         else quantized_output_uint8[i]=(unsigned char)(temp_output)+(unsigned char)(layer_zeropoint);
 
 
-        }
+    }
+    if(input_zeropoint) free(quantized_weight_acc);
 }
 
 

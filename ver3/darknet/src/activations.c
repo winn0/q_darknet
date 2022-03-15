@@ -177,7 +177,7 @@ void activate_quantized_array(unsigned char *x, const int n, const ACTIVATION a,
     else if (a == LEAKY) {
         #pragma omp parallel for
         for (i = 0; i < n; ++i) {
-            x[i] = quantized_leaky_activate(x[i]);
+            x[i] = (unsigned char)quantized_leaky_activate(x[i]);
         }
     }
     // else if (a == LOGISTIC) {
@@ -188,7 +188,7 @@ void activate_quantized_array(unsigned char *x, const int n, const ACTIVATION a,
     // }
     else {
         for (i = 0; i < n; ++i) {
-            x[i] = quantized_activate(x[i], a, quantization_layer_zeropoint);
+            x[i] = (unsigned char)quantized_activate(x[i], a, quantization_layer_zeropoint);
         }
     }
 }

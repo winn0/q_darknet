@@ -589,9 +589,92 @@ void validate_classifier_full(char *datacfg, char *filename, char *weightfile)
 }
 
 
+// float validate_classifier_single(char *datacfg, char *filename, char *weightfile, network *existing_net, int topk_custom)
+// {
+//     int i, j;
+//     network net;
+//     int old_batch = -1;
+//     if (existing_net) {
+//         net = *existing_net;    // for validation during training
+//         old_batch = net.batch;
+//         set_batch_network(&net, 1);
+//     }
+//     else {
+//         net = parse_network_cfg_custom(filename, 1, 0);
+//         if (weightfile) {
+//             load_weights(&net, weightfile);
+//         }
+//         //set_batch_network(&net, 1);
+//         fuse_conv_batchnorm(net);
+//         calculate_binary_weights(net);
+//     }
+//     srand(time(0));
+
+//     list *options = read_data_cfg(datacfg);
+
+//     char *label_list = option_find_str(options, "labels", "data/labels.list");
+//     char *leaf_list = option_find_str(options, "leaves", 0);
+//     if(leaf_list) change_leaves(net.hierarchy, leaf_list);
+//     char *valid_list = option_find_str(options, "valid", "data/train.list");
+//     int classes = option_find_int(options, "classes", 2);
+//     int topk = option_find_int(options, "top", 1);
+//     if (topk_custom > 0) topk = topk_custom;    // for validation during training
+//     if (topk > classes) topk = classes;
+//     printf(" TOP calculation...\n");
+
+//     char **labels = get_labels(label_list);
+//     list *plist = get_paths(valid_list);
+
+//     char **paths = (char **)list_to_array(plist);
+//     int m = plist->size;
+//     free_list(plist);
+
+//     float avg_acc = 0;
+//     float avg_topk = 0;
+//     int* indexes = (int*)xcalloc(topk, sizeof(int));
+
+//     for(i = 0; i < m; ++i){
+//         int class_id = -1;
+//         char *path = paths[i];
+//         for(j = 0; j < classes; ++j){
+//             if(strstr(path, labels[j])){
+//                 class_id = j;
+//                 break;
+//             }
+//         }
+//         image im = load_image_color(paths[i], 0, 0);
+//         image resized = resize_min(im, net.w);
+//         image crop = crop_image(resized, (resized.w - net.w)/2, (resized.h - net.h)/2, net.w, net.h);
+//         //show_image(im, "orig");
+//         //show_image(crop, "cropped");
+//         //cvWaitKey(0);
+//         float *pred = network_predict(net, crop.data);
+//         if(net.hierarchy) hierarchy_predictions(pred, net.outputs, net.hierarchy, 1);
+
+//         if(resized.data != im.data) free_image(resized);
+//         free_image(im);
+//         free_image(crop);
+//         top_k(pred, classes, topk, indexes);
+
+//         if(indexes[0] == class_id) avg_acc += 1;
+//         for(j = 0; j < topk; ++j){
+//             if(indexes[j] == class_id) avg_topk += 1;
+//         }
+
+//         if (existing_net) printf("\r");
+//         else printf("\n");
+//         printf("%d: top 1: %f, top %d: %f", i, avg_acc/(i+1), topk, avg_topk/(i+1));
+//     }
+//     free(indexes);
+//     if (existing_net) {
+//         set_batch_network(&net, old_batch);
+//     }
+//     float topk_result = avg_topk / i;
+//     return topk_result;
+// }
 float validate_classifier_single(char *datacfg, char *filename, char *weightfile, network *existing_net, int topk_custom)
 {
-    int i, j;
+    int i, j,iter;
     network net;
     int old_batch = -1;
     if (existing_net) {
@@ -633,9 +716,10 @@ float validate_classifier_single(char *datacfg, char *filename, char *weightfile
     float avg_topk = 0;
     int* indexes = (int*)xcalloc(topk, sizeof(int));
 
-    for(i = 0; i < m; ++i){
+    for(i =0; i < m; ++i){
         int class_id = -1;
         char *path = paths[i];
+        printf("path:%s\n",paths[i]);
         for(j = 0; j < classes; ++j){
             if(strstr(path, labels[j])){
                 class_id = j;
@@ -643,18 +727,73 @@ float validate_classifier_single(char *datacfg, char *filename, char *weightfile
             }
         }
         image im = load_image_color(paths[i], 0, 0);
+        //for(iter=0; iter<net.w*net.h; iter++) {printf("im.data[%d]=%f\n",iter,im.data[iter]);}
+
         image resized = resize_min(im, net.w);
         image crop = crop_image(resized, (resized.w - net.w)/2, (resized.h - net.h)/2, net.w, net.h);
+        unsigned char * quantized_X;
+        float *predictions;
+        float* X;
+        float * mean=(float*)xcalloc(net.c, sizeof(float)); 
+        float * var=(float*)xcalloc(net.c, sizeof(float)); 
+        int read_bytes;
+        mean[0]=net.normalize_mean_0;
+        mean[1]=net.normalize_mean_1;
+        mean[2]=net.normalize_mean_2;
+        var[0]=net.normalize_var_0;
+        var[1]=net.normalize_var_1;
+        var[2]=net.normalize_var_2;
+        if (net.quantization_type){
+            if(net.start_check_point){
+                int input_size = net.layers[net.start_check_point-1].inputs; 
+                quantized_X= (unsigned char*)xcalloc(input_size, sizeof(char));  
+                
+                FILE *fp = fopen("checkpoint_output", "rb");
+                read_bytes = fread(quantized_X, sizeof(unsigned char),input_size, fp);
+            }
+            else{
+                quantized_X= (unsigned char*)xcalloc(net.w*net.h*net.c, sizeof(char));  
+
+                //for mnist
+                //float mean[] = {0.1307, 0.1307, 0.1307};
+                //float var[] = {0.3081, 0.3081, 0.3081};
+                //for cifar10
+                //float mean[] = {0.485, 0.456, 0.406};
+                //float var[] = {0.229, 0.224, 0.225};            
+                quantized_normalize_cpu(crop.data, mean, var, 1, 3, im.w*im.h);
+                
+                //input quantization can combine with normalize
+                for (iter=0 ;iter<net.h*net.w*net.c; iter++)quantized_X[iter] = (unsigned char)(round(crop.data[iter]/net.input_scale))+(unsigned char)(net.input_zeropoint);
+    
+    
+                //normalize_cpu(im.data, mean, var, 1, 3, im.w*im.h);
+                //quantize_input(cropped,quantized_X,net.input_scale,net.input_zeropoint);
+                //FILE *fp = fopen("cifar10_input", "rb");
+                //read_bytes = fread(quantized_X, sizeof(unsigned char), 32*32*3, fp);
+                //printf("q_X[0]=%d\n",quantized_X[0]);
+
+            }
+            predictions = quantized_network_predict(net, quantized_X);
+        }
+        else{
+
+            quantized_normalize_cpu(crop.data, mean, var, 1, 3, im.w*im.h);              
+            X = crop.data;
+            predictions = network_predict(net, X);
+
+        }
         //show_image(im, "orig");
         //show_image(crop, "cropped");
         //cvWaitKey(0);
-        float *pred = network_predict(net, crop.data);
-        if(net.hierarchy) hierarchy_predictions(pred, net.outputs, net.hierarchy, 1);
+        //if(net.hierarchy) hierarchy_predictions(pred, net.outputs, net.hierarchy, 1);
 
         if(resized.data != im.data) free_image(resized);
+        free(mean);
+        free(var);
+        free(quantized_X);
         free_image(im);
         free_image(crop);
-        top_k(pred, classes, topk, indexes);
+        top_k(predictions, classes, topk, indexes);
 
         if(indexes[0] == class_id) avg_acc += 1;
         for(j = 0; j < topk; ++j){
@@ -663,7 +802,7 @@ float validate_classifier_single(char *datacfg, char *filename, char *weightfile
 
         if (existing_net) printf("\r");
         else printf("\n");
-        printf("%d: top 1: %f, top %d: %f", i, avg_acc/(i+1), topk, avg_topk/(i+1));
+        printf("%d: top 1: %f, top %d: %f\n", i, avg_acc/(i+1), topk, avg_topk/(i+1));
     }
     free(indexes);
     if (existing_net) {
@@ -672,7 +811,6 @@ float validate_classifier_single(char *datacfg, char *filename, char *weightfile
     float topk_result = avg_topk / i;
     return topk_result;
 }
-
 void validate_classifier_multi(char *datacfg, char *filename, char *weightfile)
 {
     int i, j;
@@ -852,6 +990,7 @@ void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *fi
     if (top > classes) top = classes;
 
     int i = 0;
+    int iter;
     char **names = get_labels(name_list);
     clock_t time;
     int* indexes = (int*)xcalloc(top, sizeof(int));
@@ -868,6 +1007,7 @@ void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *fi
             if(!input) break;
             strtok(input, "\n");
         }
+
         image im = load_image_color(input, 0, 0);
         image resized = resize_min(im, net.w);
         image cropped = crop_image(resized, (resized.w - net.w)/2, (resized.h - net.h)/2, net.w, net.h);
@@ -877,6 +1017,15 @@ void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *fi
         float *predictions;
         int read_bytes;
         unsigned char * quantized_X;
+        float * mean=(float*)xcalloc(net.c, sizeof(float)); 
+        float * var=(float*)xcalloc(net.c, sizeof(float)); 
+
+        mean[0]=net.normalize_mean_0;
+        mean[1]=net.normalize_mean_1;
+        mean[2]=net.normalize_mean_2;
+        var[0]=net.normalize_var_0;
+        var[1]=net.normalize_var_1;
+        var[2]=net.normalize_var_2;
         if (net.quantization_type){
             if(net.start_check_point){
                 int input_size = net.layers[net.start_check_point-1].inputs; 
@@ -884,37 +1033,33 @@ void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *fi
                 
                 FILE *fp = fopen("checkpoint_output", "rb");
                 read_bytes = fread(quantized_X, sizeof(unsigned char),input_size, fp);
-                for(i=0; i<10; i++) printf("check_point_input %d\n",quantized_X[i]);
             }
             else{
                 quantized_X= (unsigned char*)xcalloc(net.w*net.h*net.c, sizeof(char));  
 
-                printf("init input quantization\n");
-                float * mean=(float*)xcalloc(net.c, sizeof(float)); 
-                float * var=(float*)xcalloc(net.c, sizeof(float)); 
-                mean[0]=net.normalize_mean_0;
-                mean[1]=net.normalize_mean_1;
-                mean[2]=net.normalize_mean_2;
-                var[0]=net.normalize_var_0;
-                var[1]=net.normalize_var_1;
-                var[2]=net.normalize_var_2;
+
                 //for mnist
                 //float mean[] = {0.1307, 0.1307, 0.1307};
                 //float var[] = {0.3081, 0.3081, 0.3081};
                 //for cifar10
                 //float mean[] = {0.485, 0.456, 0.406};
                 //float var[] = {0.229, 0.224, 0.225};            
-                normalize_cpu(cropped.data, mean, var, 1, 3, im.w*im.h);
-                
+                // for(iter=0; iter<net.w*net.h; iter++) {printf("before_norm_cropped.data[%d]=%f\n",iter,cropped.data[iter]);}
+                quantized_normalize_cpu(cropped.data, mean, var, 1, 3, im.w*im.h);
+                // for(iter=0; iter<net.w*net.h; iter++) {printf("cropped.data[%d]=%f\n",iter,cropped.data[iter]);}
                 //input quantization can combine with normalize
-                for (i=0 ;i<net.h*net.w*net.c; i++)quantized_X[i] = (unsigned char)(round(cropped.data[i]/net.input_scale)+net.input_zeropoint);
+                 for (iter=0 ;iter<net.h*net.w*net.c; iter++)quantized_X[iter] = (unsigned char)(round(cropped.data[iter]/net.input_scale)+net.input_zeropoint);
     
     
                 //normalize_cpu(im.data, mean, var, 1, 3, im.w*im.h);
                 //quantize_input(cropped,quantized_X,net.input_scale,net.input_zeropoint);
-                //FILE *fp = fopen("cifar10_input", "rb");
-                //read_bytes = fread(quantized_X, sizeof(unsigned char), 32*32*3, fp);
-                //for(i=0; i<32*32; i++) printf("q_X[%d]=%d\n",i,quantized_X[i]);
+                // FILE *fp = fopen("input_data_horse2", "rb");
+                // read_bytes = fread(quantized_X, sizeof(unsigned char), net.w*net.h*net.c, fp);
+                //for debug
+                //FILE *fp = fopen("0001_quantized_input","wb");
+                //fwrite(quantized_X,sizeof(char),net.h*net.w*net.c,fp);
+                //fclose(fp);
+                // for(iter=0; iter<net.w*net.h; iter++) {printf("q_X[%d]=%f\n",iter,quantized_X[iter]);}
                 //printf("q_X[0]=%d\n",quantized_X[0]);
             }
             time = get_time_point();
@@ -922,6 +1067,7 @@ void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *fi
         }
         else{
             X = cropped.data;
+            quantized_normalize_cpu(cropped.data, mean, var, 1, 3, im.w*im.h);
             time = get_time_point();
             predictions = network_predict(net, X);
 
@@ -1459,7 +1605,7 @@ void run_classifier(int argc, char **argv)
     else if(0==strcmp(argv[2], "threat")) threat_classifier(data, cfg, weights, cam_index, filename);
     else if(0==strcmp(argv[2], "test")) test_classifier(data, cfg, weights, layer);
     else if(0==strcmp(argv[2], "label")) label_classifier(data, cfg, weights);
-    else if(0==strcmp(argv[2], "valid")) validate_classifier_single(data, cfg, weights, NULL, -1);
+    else if(0==strcmp(argv[2], "valid")){ printf("validate\n");validate_classifier_single(data, cfg, weights, NULL, -1);}
     else if(0==strcmp(argv[2], "validmulti")) validate_classifier_multi(data, cfg, weights);
     else if(0==strcmp(argv[2], "valid10")) validate_classifier_10(data, cfg, weights);
     else if(0==strcmp(argv[2], "validcrop")) validate_classifier_crop(data, cfg, weights);

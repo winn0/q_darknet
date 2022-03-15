@@ -1589,15 +1589,15 @@ size_t binary_transpose_align_input(int k, int n, float *b, char **t_bit_input, 
 
 void forward_convolutional_layer(convolutional_layer l, network_state state)
 {
-    printf("init forward_convolutional_layer\n");
+    // printf("init forward_convolutional_layer\n");
     int out_h = convolutional_out_height(l);
     int out_w = convolutional_out_width(l);
-    int i, j;
+    int i, j,iter;
     
     if(state.quantization_type){
 
         //fill_quantized_cpu(l.outputs*l.batch, 0, l.output, 1);
-        printf("fill_quantized_cpu\n");
+        fill_cpu_int(l.outputs*l.batch, 0, l.quantized_output, 1);
     }
     else{
         fill_cpu(l.outputs*l.batch, 0, l.output, 1);        
@@ -1613,6 +1613,7 @@ void forward_convolutional_layer(convolutional_layer l, network_state state)
         state.input = l.binary_input;
     }
     int m = l.n / l.groups;
+    // printf("l.n:%d\n",l.n);
     int k = l.size*l.size*l.c / l.groups;
     int n = out_h*out_w;
 
@@ -1627,13 +1628,12 @@ void forward_convolutional_layer(convolutional_layer l, network_state state)
     float *im;
     unsigned char *q_im;
     float* quantized_output_float;
-    printf("init\n");
+    // printf("init\n");
     for(i = 0; i < l.batch; ++i)
     {
         for (j = 0; j < l.groups; ++j)
         {
             if(state.quantization_type){
-                fill_cpu_int(l.outputs*l.batch, 0, l.quantized_output, 1);
                 q_a = l.quantized_weights +j*l.nweights / l.groups;
                 q_b = (unsigned char*)state.workspace;
                 q_c = l.quantized_output +(i*l.groups + j)*n*m;
@@ -1780,7 +1780,7 @@ void forward_convolutional_layer(convolutional_layer l, network_state state)
                         q_b = q_im;
                     }
                     else {
-                        printf("init q_im2col\n");
+                        // printf("init q_im2col\n");
                         //printf("Q im addr:%d\n",state.quantized_input[0]);
                         //printf("Q_im:%x\n",q_im[0]);
                         //im2col_cpu(im, l.c / l.groups, l.h, l.w, l.size, l.stride, l.pad, b);
@@ -1792,11 +1792,18 @@ void forward_convolutional_layer(convolutional_layer l, network_state state)
                             l.stride_y, l.stride_x, // stride (h, w)
                             l.dilation, l.dilation, // dilation (h, w)
                             q_b, state.quantized_input_zeropoint);                 // output
-                        printf("im2col done\n");
+                        // printf("im2col done\n");
                     }
+                    // printf("qb[%d]:%d\n",0,q_b[0]);
+                     // if(l.index==3){for(iter = 209 ; iter<210; iter++) printf("qa[%d]:%d\n",iter,q_a[iter]); }   
 
+                     // if(l.index==3){for(iter = 209 ; iter<210; iter++) printf("qb[%d]:%d\n",iter,q_b[iter]);    }    
                     quantized_gemm(0, 0, m, n, k, 1, q_a, k, q_b, n, 1, q_c, n);
-                                            printf("q_gemm done\n");
+                     // if(l.index==3){for(iter = 209 ; iter<210; iter++) printf("qc[%d]:%d\n",iter,q_c[iter]);    } 
+                     // if(l.index==3) printf("l.M0_int32[209]:%d,l.right_shift[209]:%d,l.biases_int32[209]:%d\n",l.M0_int32[3],l.right_shift[3],l.biases_int32[3]);
+
+        
+                                            // printf("q_gemm done\n");
                 //     quantized_output_float = (float*)xcalloc((l.n/l.groups)*l.out_h*l.out_w,sizeof(float));
                 //     quantized_output_int = (int*)xcalloc((l.n/l.groups)*l.out_h*l.out_w,sizeof(float));
                 //     printf("make q_out_float done\n");
@@ -1804,7 +1811,11 @@ void forward_convolutional_layer(convolutional_layer l, network_state state)
                 //    // for(int i =0; i<l.outputs; i++) l.quantized_output_int8[i]= (char)l.quantized_output[i];
                 //                         printf("im2col done\n");  
                 // for(i=0; i<l.outputs ; i++) l.quantized_output_int[i]= round(quantized_output_float[i]);
-                    printf("make q_out_int64 done\n");
+
+                    // if(l.index<=9){for(iter = 0 ; iter<10; iter++) printf("gemm after qc[%d]:%d\n",iter,q_c[iter]);} 
+
+                    // printf("make q_out_int64 done\n");
+                    // printf("qc[%d]:%d\n",0,q_c[0]);
                     conv_output_quantization(q_a,q_b,q_c,
                         l.c/l.groups,l.n/l.groups,
                         out_h,out_w,
@@ -1879,7 +1890,7 @@ void forward_convolutional_layer(convolutional_layer l, network_state state)
     else if (l.activation == NORM_CHAN_SOFTMAX_MAXVAL) activate_array_normalize_channels_softmax(l.output, l.outputs*l.batch, l.batch, l.out_c, l.out_w*l.out_h, l.output, 1);
     else {
         if(state.quantization_type){
-            printf("init_quantized_activate\n");
+            // printf("init_quantized_activate\n");
             quantized_activate_array_cpu_custom(l.quantized_output_uint8, l.outputs*l.batch, l.activation,l.quantization_layer_zeropoint);
         }
         else{        

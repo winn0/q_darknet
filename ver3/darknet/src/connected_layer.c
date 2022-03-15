@@ -306,25 +306,19 @@ void forward_connected_layer(connected_layer l, network_state state)
     int m = l.batch;
     int k = l.inputs;
     int n = l.outputs;
-    float* quantized_output_float;
     if(l.quantization_type){
         fill_cpu_int(l.outputs*l.batch, 0, l.quantized_output, 1);
         char *q_a = l.quantized_weights;
         unsigned char *q_b = state.quantized_input;
         int *q_c = l.quantized_output;
-        // printf("init connected gemm\n");
-        for(i = 0 ; i<n; i++)q_c[i]=0;
+        // for(i = 0 ; i<n; i++)q_c[i]=0;
         quantized_gemm(0,1,m,n,k,1,q_a,k,q_b,k,1,q_c,n);
-        quantized_output_float = (float*)xcalloc(l.outputs,sizeof(float));
-        for (i =0; i<n; i++) quantized_output_float[i]=0;
-        // printf("init connected output quan\n");
         connect_output_quantization(q_a,q_b,q_c,
             l.inputs,l.outputs,
             state.quantized_input_zeropoint,l.quantization_per_channel_zeropoint,
             l.M0_int32,l.right_shift,
             l.quantization_layer_zeropoint,
             l.quantized_output_uint8,l.biases_int32);
-      // printf("complete connected output quan\n");
     }
     else{
         float *a = state.input;
@@ -353,11 +347,6 @@ void forward_connected_layer(connected_layer l, network_state state)
     }
     if(l.quantization_type){
         for(i = 0; i < l.batch; ++i){
-            // printf("init quan axpy cpu\n"); 
-            //quantized_axpy_cpu(l.outputs, 1, l.biases, 1, quantized_output_float + i*l.outputs, 1,l.quantization_layer_scale);
-
-            //for(i=0; i<l.outputs ; i++) l.quantized_output_uint8[i]= q_rounding(quantized_output_float[i]);
-            //free(quantized_output_float);     
             activate_quantized_array(l.quantized_output_uint8, l.outputs*l.batch, l.activation, l.quantization_layer_zeropoint);
         }        
 

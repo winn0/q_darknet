@@ -294,6 +294,18 @@ void normalize_cpu(float *x, float *mean, float *variance, int batch, int filter
         }
     }
 }
+void quantized_normalize_cpu(float *x, float *mean, float *variance, int batch, int filters, int spatial)
+{
+    int b, f, i;
+    for(b = 0; b < batch; ++b){
+        for(f = 0; f < filters; ++f){
+            for(i = 0; i < spatial; ++i){
+                int index = b*filters*spatial + f*spatial + i;
+                x[index] = (x[index] - mean[f])/variance[f];
+            }
+        }
+    }
+}
 
 void const_cpu(int N, float ALPHA, float *X, int INCX)
 {
@@ -341,21 +353,11 @@ void  fill_cpu(int N, float ALPHA, float *X, int INCX)
         for (i = 0; i < N; ++i) X[i*INCX] = ALPHA;
     }
 }
-void fill_cpu_int(int N, int ALPHA, int *X, int INCX)
+void  fill_cpu_int(int N, int ALPHA, int *X, int INCX)
 {
     int i;
     if (INCX == 1 && ALPHA == 0) {
-        memset(X, 0, N * sizeof(int));
-    }
-    else {
-        for (i = 0; i < N; ++i) X[i*INCX] = ALPHA;
-    }
-}
-void fill_cpu_uchar(int N, int ALPHA, unsigned char *X, int INCX)
-{
-    int i;
-    if (INCX == 1 && ALPHA == 0) {
-        memset(X, 0, N * sizeof(char));
+        memset(X, 0, N * sizeof(float));
     }
     else {
         for (i = 0; i < N; ++i) X[i*INCX] = ALPHA;

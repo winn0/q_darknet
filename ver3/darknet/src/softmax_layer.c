@@ -85,10 +85,10 @@ softmax_layer make_quantized_softmax_layer(int batch, int inputs, int groups, in
 
 void forward_softmax_layer(const softmax_layer l, network_state net)
 {
-    printf("init forward_softmax_layer\n");
-    printf("l.softmax_tree:%d\n",l.softmax_tree);
-    printf("net.truth:%d\n",net.truth);
-    printf("l.noloss:%d\n",l.noloss);
+    // printf("init forward_softmax_layer\n");
+    // printf("l.softmax_tree:%d\n",l.softmax_tree);
+    // printf("net.truth:%d\n",net.truth);
+    // printf("l.noloss:%d\n",l.noloss);
     if(l.softmax_tree){
         int i;
         int count = 0;
@@ -99,9 +99,9 @@ void forward_softmax_layer(const softmax_layer l, network_state net)
         }
     } else {
         if(l.quantization_type){
-            printf("q_softmax\n");
+            // printf("q_softmax\n");
             quantized_softmax_cpu(net.quantized_input, l.inputs/l.groups, l.batch, l.inputs, l.groups, l.inputs/l.groups, 1, l.temperature, l.output);
-            printf("q_softmax done\n");
+            // printf("q_softmax done\n");
         }
         else{
             softmax_cpu(net.input, l.inputs/l.groups, l.batch, l.inputs, l.groups, l.inputs/l.groups, 1, l.temperature, l.output);

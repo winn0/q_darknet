@@ -296,13 +296,18 @@ void forward_network(network net, network_state state)
         //printf("%d - Predicted in %lf milli-seconds.\n", i, ((double)get_time_point() - time) / 1000);
         if (l.type != SOFTMAX){
             if(state.quantization_type){   
-                printf("forwward %d complete\n",i);         
+                // printf("forward %d complete\n",i);         
                 state.quantized_input = l.quantized_output_uint8;
-               for (j=0 ;j<10; j++){
-                printf("quantized_output_uint8[%d]:%d\n",j,l.quantized_output_uint8[j]);
-                }
+                // for (j=0 ;j<10; j++)printf("quantized_output_uint8[%d]:%d\n",j,l.quantized_output_uint8[j]);
+
                 //state.quantized_input_scale= l.quantization_layer_scale;
                 state.quantized_input_zeropoint=l.quantization_layer_zeropoint;
+                //for debug
+                // char buff[20];
+                // sprintf(buff, "partial_output/layer%d output",i); 
+                // FILE *fp = fopen(buff,"wb");
+                // fwrite(l.quantized_output_uint8,sizeof(char),l.outputs,fp);
+                // fclose(fp);
                 if(net.end_check_point){
                     if(i == net.end_check_point-1){
                         FILE *fp = fopen("checkpoint_output","wb");

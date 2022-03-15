@@ -1901,8 +1901,10 @@ network parse_network_cfg_custom(char *filename, int batch, int time_steps)
 #else
 
         if (workspace_size) {
+            printf("workspace size :%d\n",workspace_size);
             if(net.quantization_type) net.workspace = (unsigned char*)xcalloc(1, workspace_size);
             else net.workspace = (float*)xcalloc(1, workspace_size);
+            printf("workspace xcalloc \n");
         }
 #endif
 
