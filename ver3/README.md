@@ -47,6 +47,8 @@ lenet5_qat_mnist:Resnet18_qat_cifar10 :training model and save
 
 lenet5_make scale_fixed_point: (from saved lenet5) fixed point normalization to ccale and save weights file to merged_weights and can see layer scales, zeropoints 
 
+le5_make_cfg:make cfg file for darknet from pytorch le5 model
+
 ## resnet18
 resnet18 cifar10 model is referenced from https://gaussian37.github.io/dl-pytorch-quantization/
 
@@ -54,6 +56,9 @@ Resnet18_qat_cifar10 :training model and save
 
 resnet18_make scale_fixed_point: (from saved resnet18) fixed point normalization to scale and save weights file to merged_weights and can see layer scales, zeropoints 
 
+resnet18_make_cfg:make cfg file for darknet from pytorch resnet18 model
+
 resnet18_edit.ipynb: edit quantized resnet18 zeropoint and scale 
+
 
 
