@@ -147,6 +147,12 @@ def make_layer_dict(module,model_dict):
         model_dict["before_layer_type"]=module._get_name()   
         model_dict[layer_num]=block_dict
     return model_dict #,last_top_layer
+
+def iter_module_children_recur_cfg(model,model_dict):
+    for module_name, module in model.named_children():
+        model_dict=make_layer_dict(module,model_dict)
+        if module_name not in shortcut_layer_name:
+            iter_module_children_recur_cfg(module,model_dict)
 def make_cfg_from_pytorch(model,cfgfile_name,input_width,input_height,input_channel,mean_list,std_list):
     
     model_dict=dict()
@@ -158,20 +164,21 @@ def make_cfg_from_pytorch(model,cfgfile_name,input_width,input_height,input_chan
     model_dict["before_layer_scale"]=0
     
     last_top_layer=-1
-    for module_name, module in model.named_children():
-        model_dict=make_layer_dict(module,model_dict)
-        if module_name not in shortcut_layer_name:
-            for module_name_, module_ in module.named_children():
-                model_dict=make_layer_dict(module_,model_dict)
-                if module_name_ not in shortcut_layer_name:        
-                    for module_name__, module__ in module_.named_children():       
-                        make_layer_dict(module__,model_dict)
-                        if module_name__ not in shortcut_layer_name:                    
-                            for module_name___, module___ in module__.named_children():            
-                                make_layer_dict(module___,model_dict)
-                                if module_name___ not in shortcut_layer_name:
-                                    for module_name____, module____ in module___.named_children():   
-                                        make_layer_dict(module____,model_dict)
+    iter_module_children_recur_cfg(model,model_dict)
+    # for module_name, module in model.named_children():
+    #     model_dict=make_layer_dict(module,model_dict)
+    #     if module_name not in shortcut_layer_name:
+    #         for module_name_, module_ in module.named_children():
+    #             model_dict=make_layer_dict(module_,model_dict)
+    #             if module_name_ not in shortcut_layer_name:        
+    #                 for module_name__, module__ in module_.named_children():       
+    #                     make_layer_dict(module__,model_dict)
+    #                     if module_name__ not in shortcut_layer_name:                    
+    #                         for module_name___, module___ in module__.named_children():            
+    #                             make_layer_dict(module___,model_dict)
+    #                             if module_name___ not in shortcut_layer_name:
+    #                                 for module_name____, module____ in module___.named_children():   
+    #                                     make_layer_dict(module____,model_dict)
     if(model_dict["before_layer_type"] not in softmax):                      
         model_dict["layer_count"]+=1  
         layer_num=model_dict["layer_count"]

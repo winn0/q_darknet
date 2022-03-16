@@ -39,48 +39,61 @@ def fusion_conv_bn_relu(layer):
         fusion_list.append(fusion_group)
             
     return fusion_list        
-            
-def make_fuse_dict(model,model_name):
+def iter_module_children_recur_fusion(model,fusion_layer_dict,top_path):
 
-    fusion_layer_dict=dict()
     for module_name, module in model.named_children():
-        class_path=model_name
+        current_path=top_path
         if str.isdigit(module_name): 
-            class_path+='['+module_name+']'
+            current_path+='['+module_name+']'
         else:
-            class_path+='.'+module_name
+            current_path+='.'+module_name
         fusion_list=list()
         fusion_list=fusion_conv_bn_relu(module)
         if fusion_list:        
-            fusion_layer_dict[class_path]=fusion_list
-        
-        for module_name_, module_ in module.named_children():
-            if str.isdigit(module_name_): 
-                class_path_=class_path+'['+module_name_+']'
-            else:
-                class_path_=class_path+'.'+module_name_
-            fusion_list=list()
-            fusion_list=fusion_conv_bn_relu(module_)
-            if fusion_list:        
-                fusion_layer_dict[class_path_]=fusion_list
-            for module_name__, module__ in module_.named_children():
-                if str.isdigit(module_name__): 
-                    class_path__=class_path_+'['+module_name__+']'
-                else:
-                    class_path__=class_path_+'.'+module_name__
-                fusion_list=list()
-                fusion_list=fusion_conv_bn_relu(module__)
-                if fusion_list:        
-                    fusion_layer_dict[class_path__]=fusion_list
-                for module_name___, module___ in module__.named_children():
-                    if str.isdigit(module_name___): 
-                        class_path___=class_path__+'['+module_name___+']'
-                    else:
-                        class_path___=class_path__+'.'+module_name___
-                    fusion_list=list()
-                    fusion_list=fusion_conv_bn_relu(module___)
-                    if fusion_list:        
-                        fusion_layer_dict[class_path___]=fusion_list    
+            fusion_layer_dict[current_path]=fusion_list        
+        iter_module_children_recur_fusion(module,fusion_layer_dict,current_path)         
+def make_fuse_dict(model,model_name):
+
+    fusion_layer_dict=dict()
+
+    for module_name, module in model.named_children():
+        current_path=model_name # init current_path
+        if str.isdigit(module_name): 
+            current_path+='['+module_name+']'
+        else:
+            current_path+='.'+module_name
+        fusion_list=list()
+        fusion_list=fusion_conv_bn_relu(module)
+        if fusion_list:        
+            fusion_layer_dict[current_path]=fusion_list
+        iter_module_children_recur_fusion(module,fusion_layer_dict,current_path)        
+    #     for module_name_, module_ in module.named_children():
+    #         if str.isdigit(module_name_): 
+    #             class_path_=class_path+'['+module_name_+']'
+    #         else:
+    #             class_path_=class_path+'.'+module_name_
+    #         fusion_list=list()
+    #         fusion_list=fusion_conv_bn_relu(module_)
+    #         if fusion_list:        
+    #             fusion_layer_dict[class_path_]=fusion_list
+    #         for module_name__, module__ in module_.named_children():
+    #             if str.isdigit(module_name__): 
+    #                 class_path__=class_path_+'['+module_name__+']'
+    #             else:
+    #                 class_path__=class_path_+'.'+module_name__
+    #             fusion_list=list()
+    #             fusion_list=fusion_conv_bn_relu(module__)
+    #             if fusion_list:        
+    #                 fusion_layer_dict[class_path__]=fusion_list
+    #             for module_name___, module___ in module__.named_children():
+    #                 if str.isdigit(module_name___): 
+    #                     class_path___=class_path__+'['+module_name___+']'
+    #                 else:
+    #                     class_path___=class_path__+'.'+module_name___
+    #                 fusion_list=list()
+    #                 fusion_list=fusion_conv_bn_relu(module___)
+    #                 if fusion_list:        
+    #                     fusion_layer_dict[class_path___]=fusion_list    
     return fusion_layer_dict
 
 def fuse_model(model):
