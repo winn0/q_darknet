@@ -1,3 +1,5 @@
+import numpy as np
+import os
 Quantize=['Quantize']
 AdaptiveAvgPool2d=['AdaptiveAvgPool2d']
 QuantizedLinear=['QuantizedLinear']
@@ -7,6 +9,7 @@ MaxPool2d=['MaxPool2d']
 shortcut=['QFunctional']
 shortcut_from=-3
 ReLU=['ReLU']
+cfg_dir='cfg_data/'
 softmax=['softmax','logsoftmax']
 shortcut_layer_name=['shortcut','downsample']
 def make_net_dict(input_width,input_height,input_channel,mean_list,std_list):
@@ -20,8 +23,8 @@ def make_net_dict(input_width,input_height,input_channel,mean_list,std_list):
     block_dict["policy"]="poly"
     block_dict["power"]="4"
     block_dict["learning_rate"]="0.01"
-    block_dict["angle="]="1"
-    block_dict["hue="]="1"
+    block_dict["angle"]="1"
+    block_dict["hue"]="1"
     block_dict["saturation"]="1"
     block_dict["exposure"]="1"
     block_dict["aspect"]="1"
@@ -29,6 +32,7 @@ def make_net_dict(input_width,input_height,input_channel,mean_list,std_list):
     block_dict["width"]=str(input_width)
     block_dict["channels"]=str(input_channel)
     block_dict["quantization_type"]=str(0)
+    block_dict["combined_weight"]=str(0)
     block_dict["start_check_point"]=str(0)
     block_dict["end_check_point"]=str(0)
     block_dict["input_scale"]=str(0)
@@ -36,9 +40,9 @@ def make_net_dict(input_width,input_height,input_channel,mean_list,std_list):
     block_dict["normalize_mean_0"]=str(mean_list[0])
     block_dict["normalize_mean_1"]=str(mean_list[1])
     block_dict["normalize_mean_2"]=str(mean_list[2])
-    block_dict["normalize_var_0"]=str(std_list[0])
-    block_dict["normalize_var_1"]=str(std_list[1])
-    block_dict["normalize_var_2"]=str(std_list[2])
+    block_dict["normalize_std_0"]=str(std_list[0])
+    block_dict["normalize_std_1"]=str(std_list[1])
+    block_dict["normalize_std_2"]=str(std_list[2])
     return block_dict
 
 
@@ -47,7 +51,7 @@ def make_layer_dict(module,model_dict):
     layer_num=model_dict["layer_count"]+1
     
     if module._get_name() in Quantize:
-        model_dict['net']['input_scale']=str(module.scale.numpy())[1:-1]
+        model_dict['net']['input_scale']=str(np.round(module.scale.numpy(),15))[1:-1]
         model_dict['net']['input_zeropoint']=str(module.zero_point.numpy())[1:-1]
         model_dict['net']['quantization_type']="1"
         
@@ -57,7 +61,8 @@ def make_layer_dict(module,model_dict):
         block_dict= dict()
         block_dict["layer_type"]="[convolutional]"
         block_dict["quantization_type"] ="1"
-        block_dict["quantization_layer_scale"] =str(module.scale)
+        block_dict["float_cal"] ="0"
+        block_dict["quantization_layer_scale"] =str(np.round(module.scale,15))
         block_dict["quantization_layer_zeropoint"] =str(module.zero_point)
         block_dict["filters"] =str(module.out_channels)
         block_dict["size"] =str(module.kernel_size[0])
@@ -76,7 +81,8 @@ def make_layer_dict(module,model_dict):
         block_dict= dict()
         block_dict["layer_type"]="[convolutional]"
         block_dict["quantization_type"] ="1"
-        block_dict["quantization_layer_scale"] =str(module.scale)
+        block_dict["float_cal"] ="0"
+        block_dict["quantization_layer_scale"] =str(np.round(module.scale,15))
         block_dict["quantization_layer_zeropoint"] =str(module.zero_point)
         block_dict["filters"] =str(module.out_channels)
         block_dict["size"] =str(module.kernel_size[0])
@@ -95,6 +101,8 @@ def make_layer_dict(module,model_dict):
         if model_dict["before_layer_type"] in QuantizedConv2d:
             model_dict[layer_num]["activation"] = "relu"
         if model_dict["before_layer_type"] in QuantizedLinear:
+            model_dict[layer_num]["activation"] = "relu" 
+        if model_dict["before_layer_type"] in shortcut:
             model_dict[layer_num]["activation"] = "relu" 
 
     if module._get_name() in MaxPool2d: 
@@ -117,6 +125,7 @@ def make_layer_dict(module,model_dict):
         block_dict= dict()
         block_dict["layer_type"]="[shortcut]"
         block_dict["quantization_type"] =model_dict["before_layer_quantization_type"]
+        block_dict["float_cal"] ="0"
         block_dict["quantization_layer_scale"] =model_dict["before_layer_scale"]
         block_dict["quantization_layer_zeropoint"] =model_dict["before_layer_zeropoint"]
         block_dict["from"] =str(shortcut_from)
@@ -130,7 +139,8 @@ def make_layer_dict(module,model_dict):
         block_dict= dict() 
         block_dict["layer_type"]="[connected]"
         block_dict["quantization_type"] ="1"
-        block_dict["quantization_layer_scale"] =str(module.scale)
+        block_dict["float_cal"] ="0"
+        block_dict["quantization_layer_scale"] =str(np.round(module.scale,15))
         block_dict["quantization_layer_zeropoint"] =str(module.zero_point)
         block_dict["output"] =str(module.out_features)
         model_dict["before_layer_type"]=module._get_name()
@@ -147,12 +157,6 @@ def make_layer_dict(module,model_dict):
         model_dict["before_layer_type"]=module._get_name()   
         model_dict[layer_num]=block_dict
     return model_dict #,last_top_layer
-
-def iter_module_children_recur_cfg(model,model_dict):
-    for module_name, module in model.named_children():
-        model_dict=make_layer_dict(module,model_dict)
-        if module_name not in shortcut_layer_name:
-            iter_module_children_recur_cfg(module,model_dict)
 def make_cfg_from_pytorch(model,cfgfile_name,input_width,input_height,input_channel,mean_list,std_list):
     
     model_dict=dict()
@@ -164,21 +168,20 @@ def make_cfg_from_pytorch(model,cfgfile_name,input_width,input_height,input_chan
     model_dict["before_layer_scale"]=0
     
     last_top_layer=-1
-    iter_module_children_recur_cfg(model,model_dict)
-    # for module_name, module in model.named_children():
-    #     model_dict=make_layer_dict(module,model_dict)
-    #     if module_name not in shortcut_layer_name:
-    #         for module_name_, module_ in module.named_children():
-    #             model_dict=make_layer_dict(module_,model_dict)
-    #             if module_name_ not in shortcut_layer_name:        
-    #                 for module_name__, module__ in module_.named_children():       
-    #                     make_layer_dict(module__,model_dict)
-    #                     if module_name__ not in shortcut_layer_name:                    
-    #                         for module_name___, module___ in module__.named_children():            
-    #                             make_layer_dict(module___,model_dict)
-    #                             if module_name___ not in shortcut_layer_name:
-    #                                 for module_name____, module____ in module___.named_children():   
-    #                                     make_layer_dict(module____,model_dict)
+    for module_name, module in model.named_children():
+        model_dict=make_layer_dict(module,model_dict)
+        if module_name not in shortcut_layer_name:
+            for module_name_, module_ in module.named_children():
+                model_dict=make_layer_dict(module_,model_dict)
+                if module_name_ not in shortcut_layer_name:        
+                    for module_name__, module__ in module_.named_children():       
+                        make_layer_dict(module__,model_dict)
+                        if module_name__ not in shortcut_layer_name:                    
+                            for module_name___, module___ in module__.named_children():            
+                                make_layer_dict(module___,model_dict)
+                                if module_name___ not in shortcut_layer_name:
+                                    for module_name____, module____ in module___.named_children():   
+                                        make_layer_dict(module____,model_dict)
     if(model_dict["before_layer_type"] not in softmax):                      
         model_dict["layer_count"]+=1  
         layer_num=model_dict["layer_count"]
@@ -189,7 +192,10 @@ def make_cfg_from_pytorch(model,cfgfile_name,input_width,input_height,input_chan
         model_dict["before_layer_type"]=softmax      
         model_dict[layer_num]=block_dict
     write_line=''
-    with open(cfgfile_name, 'wb') as cfgfile:
+    if not os.path.exists(cfg_dir):
+        os.makedirs(cfg_dir)    
+    cfg_path=cfg_dir+cfgfile_name
+    with open(cfg_path, 'wb') as cfgfile:
         for layer in model_dict:
             if type(model_dict[layer]) is dict:
                 for layer_options in model_dict[layer]:

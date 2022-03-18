@@ -1,6 +1,6 @@
 classes=10
-train  = data/CIFAR10_images/train.list
-valid  = data/CIFAR10_images/test.list
-labels = data/CIFAR10_images/labels.txt
+train  = data/cifar/train.list
+valid  = data/cifar/test.list
+labels = data/cifar/labels.txt
 backup = backup/
 top=2

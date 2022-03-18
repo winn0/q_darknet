@@ -14,6 +14,7 @@ import numpy as np
 import torchvision.models as models
 import torch.nn.functional as F
 weight_dir ='weight_data/'
+extract_dir='extract_dir/'
 def save_np_1darray(save_list,file_name,save_np_file):
     
     if (save_np_file.dtype =='int8') or (save_np_file.dtype =='uint8'):
@@ -30,8 +31,9 @@ def save_np_1darray(save_list,file_name,save_np_file):
         save_np_file=save_np_file.astype(np.int32)
     else:
         assert 0,"unknown file type error"
-
-    save_np_file.tofile(weight_dir+file_name)  
+    if not os.path.exists(extract_dir):
+        os.makedirs(extract_dir)
+    save_np_file.tofile(extract_dir+file_name)  
     return save_list
 def make_default_save_file(save_list):
     file_name ='default_setting'
@@ -52,13 +54,13 @@ def make_default_save_file(save_list):
     default_setting[13] = 0
     default_setting[14] = 0
     default_setting[15] = 0
-    if not os.path.exists(weight_dir):
-        os.makedirs(weight_dir)
-    default_setting.tofile(weight_dir+file_name)    
+    if not os.path.exists(extract_dir):
+        os.makedirs(extract_dir)
+    default_setting.tofile(extract_dir+file_name)    
     save_list[file_name]=16
     return save_list
 
-def merge_weight_files(save_list):
+def merge_weight_files(save_list,weight_file_name):
     sum_size=0
     for file_name in save_list:
         sum_size += save_list[file_name]
@@ -66,13 +68,13 @@ def merge_weight_files(save_list):
     save_checkpoint=0
     for file_name in save_list:
         save_end = save_checkpoint+ save_list[file_name]
-        temp_weights=np.fromfile(weight_dir+file_name,dtype=np.int8)
+        temp_weights=np.fromfile(extract_dir+file_name,dtype=np.int8)
         #print(temp_weights)
         merged_weights[save_checkpoint:save_end]=temp_weights
         save_checkpoint=save_end
     if not os.path.exists(weight_dir):
         os.makedirs(weight_dir)
-    merged_weights.tofile(weight_dir+"merged_weights")
+    merged_weights.tofile(weight_dir+weight_file_name)
         
 def make_channel_nomalization(input_scale, channel_scale_list,out_scale,channel_bias_list):
     channel_num=len(channel_scale_list)
