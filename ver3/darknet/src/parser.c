@@ -173,6 +173,7 @@ convolutional_layer parse_convolutional(list *options, size_params params)
     int quantization_type = option_find_int(options, "quantization_type",0); //q_inserted
     float quantization_layer_scale = option_find_float(options, "quantization_layer_scale",0);
     int quantization_layer_zeropoint = option_find_int(options, "quantization_layer_zeropoint",1);
+    int float_cal = option_find_int(options, "float_cal",0);
     int groups = option_find_int_quiet(options, "groups", 1);
     int size = option_find_int(options, "size",1);
     int stride = -1;
@@ -231,7 +232,7 @@ convolutional_layer parse_convolutional(list *options, size_params params)
     }
     convolutional_layer layer =  {0};
     if (quantization_type){ //q_inserted
-        layer = make_quantized_convolutional_layer(batch,1,h,w,c,n,groups,size,stride_x,stride_y,dilation,padding,activation, batch_normalize, binary, xnor, params.net.adam, use_bin_output, params.index, antialiasing, share_layer, assisted_excitation, deform, params.train, quantization_type);        
+        layer = make_quantized_convolutional_layer(batch,1,h,w,c,n,groups,size,stride_x,stride_y,dilation,padding,activation, batch_normalize, binary, xnor, params.net.adam, use_bin_output, params.index, antialiasing, share_layer, assisted_excitation, deform, params.train, quantization_type, float_cal);        
     }
     else{
         layer = make_convolutional_layer(batch,1,h,w,c,n,groups,size,stride_x,stride_y,dilation,padding,activation, batch_normalize, binary, xnor, params.net.adam, use_bin_output, params.index, antialiasing, share_layer, assisted_excitation, deform, params.train);        
@@ -240,6 +241,7 @@ convolutional_layer parse_convolutional(list *options, size_params params)
     layer.dot = option_find_float_quiet(options, "dot", 0);
     layer.quantization_layer_scale= quantization_layer_scale; //q_inserted
     layer.quantization_layer_zeropoint= quantization_layer_zeropoint;
+    layer.float_cal= float_cal;
     layer.sway = sway;
     layer.rotate = rotate;
     layer.stretch = stretch;
@@ -364,14 +366,16 @@ connected_layer parse_connected(list *options, size_params params)
     int quantization_type = option_find_int(options, "quantization_type",0); //q_inserted
     float quantization_layer_scale = option_find_float(options, "quantization_layer_scale",0);
     int quantization_layer_zeropoint = option_find_int(options, "quantization_layer_zeropoint",1);
+    int float_cal = option_find_int(options, "float_cal",0);
     int output = option_find_int(options, "output",1);
     char *activation_s = option_find_str(options, "activation", "logistic");
     ACTIVATION activation = get_activation(activation_s);
     int batch_normalize = option_find_int_quiet(options, "batch_normalize", 0);
     if(quantization_type){ //q_inserted
-        connected_layer layer = make_quantized_connected_layer(params.batch, 1, params.inputs, output, activation, batch_normalize,quantization_type);
+        connected_layer layer = make_quantized_connected_layer(params.batch, 1, params.inputs, output, activation, batch_normalize,quantization_type, float_cal);
         layer.quantization_layer_scale= quantization_layer_scale;
         layer.quantization_layer_zeropoint= quantization_layer_zeropoint;
+        layer.float_cal= float_cal;
         return layer;
     }
     else{
@@ -889,6 +893,7 @@ maxpool_layer parse_maxpool(list *options, size_params params)
     int quantization_type = option_find_int(options, "quantization_type",0); //q_inserted
     float quantization_layer_scale = option_find_float(options, "quantization_layer_scale",0);
     int quantization_layer_zeropoint = option_find_int(options, "quantization_layer_zeropoint",1);
+    int float_cal = option_find_int(options, "float_cal",0);
     int stride = option_find_int(options, "stride",1);
     int stride_x = option_find_int_quiet(options, "stride_x", stride);
     int stride_y = option_find_int_quiet(options, "stride_y", stride);
@@ -912,6 +917,7 @@ maxpool_layer parse_maxpool(list *options, size_params params)
         layer.maxpool_zero_nonmax = option_find_int_quiet(options, "maxpool_zero_nonmax", 0);
         layer.quantization_layer_scale= quantization_layer_scale;
         layer.quantization_layer_zeropoint= quantization_layer_zeropoint;
+        layer.float_cal= float_cal;
         return layer;
     }
     else{
@@ -982,6 +988,7 @@ layer parse_shortcut(list *options, size_params params, network net)
     int quantization_type = option_find_int(options, "quantization_type",0); //q_inserted
     float quantization_layer_scale = option_find_float(options, "quantization_layer_scale",0);
     int quantization_layer_zeropoint = option_find_int(options, "quantization_layer_zeropoint",1);
+    int float_cal = option_find_int(options, "float_cal",0);
     int stride = option_find_int(options, "stride",1);
     char *activation_s = option_find_str(options, "activation", "linear");
     ACTIVATION activation = get_activation(activation_s);
@@ -1052,9 +1059,10 @@ layer parse_shortcut(list *options, size_params params, network net)
 #endif// GPU
     if (quantization_type){  //q_inserted
     layer s = make_quantized_shortcut_layer(params.batch, n, layers, sizes, params.w, params.h, params.c,net.layers[layers[0]].out_w,net.layers[layers[0]].out_h,net.layers[layers[0]].out_c, layers_output_uinit8, layers_delta,
-        layers_output_gpu, layers_delta_gpu, weights_type, weights_normalization, activation, params.train,quantization_type); // only for 1 layer input
+        layers_output_gpu, layers_delta_gpu, weights_type, weights_normalization, activation, params.train,quantization_type, float_cal); // only for 1 layer input
         s.quantization_layer_scale= quantization_layer_scale;
         s.quantization_layer_zeropoint= quantization_layer_zeropoint;
+        s.float_cal= float_cal;
         for (i = 0; i < n; ++i) {
             int index = layers[i];
             //assert(params.w == net.layers[index].out_w && params.h == net.layers[index].out_h);
@@ -1067,7 +1075,7 @@ layer parse_shortcut(list *options, size_params params, network net)
         return s;
     }
     else{
-    layer s = make_shortcut_layer(params.batch, n, layers, sizes, params.w, params.h, params.c, layers_output, layers_delta,
+    layer s = make_shortcut_layer(params.batch, n, layers, sizes, params.w, params.h, params.c,net.layers[layers[0]].out_w,net.layers[layers[0]].out_h,net.layers[layers[0]].out_c, layers_output, layers_delta,
         layers_output_gpu, layers_delta_gpu, weights_type, weights_normalization, activation, params.train);
         free(layers_output_gpu);
         free(layers_delta_gpu);
@@ -1245,6 +1253,7 @@ learning_rate_policy get_policy(char *s)
 void parse_net_options(list *options, network *net)
 {
     net->quantization_type = option_find_int(options, "quantization_type", 0);
+    net->combined_weight = option_find_int(options, "combined_weight", 0);
     net->input_scale = option_find_float(options, "input_scale", 0);
     net->input_zeropoint = option_find_int(options, "input_zeropoint", 0);
     net->start_check_point = option_find_int(options, "start_check_point", 0);
@@ -1252,9 +1261,9 @@ void parse_net_options(list *options, network *net)
     net->normalize_mean_0 = option_find_float(options, "normalize_mean_0", 0);
     net->normalize_mean_1 = option_find_float(options, "normalize_mean_1", 0);
     net->normalize_mean_2 = option_find_float(options, "normalize_mean_2", 0);
-    net->normalize_var_0 = option_find_float(options, "normalize_var_0", 0);
-    net->normalize_var_1 = option_find_float(options, "normalize_var_1", 0);
-    net->normalize_var_2 = option_find_float(options, "normalize_var_2", 0);    net->max_batches = option_find_int(options, "max_batches", 0);
+    net->normalize_std_0 = option_find_float(options, "normalize_std_0", 0);
+    net->normalize_std_1 = option_find_float(options, "normalize_std_1", 0);
+    net->normalize_std_2 = option_find_float(options, "normalize_std_2", 0);    net->max_batches = option_find_int(options, "max_batches", 0);
     net->batch = option_find_int(options, "batch",1);
     net->learning_rate = option_find_float(options, "learning_rate", .001);
     net->learning_rate_min = option_find_float_quiet(options, "learning_rate_min", .00001);
@@ -2213,8 +2222,11 @@ void transpose_matrix(float *a, int rows, int cols)
 
 void load_connected_weights(layer l, FILE *fp, int transpose)
 {
-    fread(l.biases, sizeof(float), l.outputs, fp);
     fread(l.weights, sizeof(float), l.outputs*l.inputs, fp);
+    printf("l.weights[0]:%f\n",l.weights[0]);
+    fread(l.biases, sizeof(float), l.outputs, fp);
+        printf("l.biases[0]:%f\n",l.biases[0]);
+
     if(transpose){
         transpose_matrix(l.weights, l.inputs, l.outputs);
     }
@@ -2234,21 +2246,44 @@ void load_connected_weights(layer l, FILE *fp, int transpose)
     }
 #endif
 }
-void load_quantized_connected_weights(layer l, FILE *fp, int transpose, int quantization_type)
+void load_quantized_connected_weights(layer l, FILE *fp, int transpose, int quantization_type, int combined_weight)
 {  
 
     
     if(quantization_type){
         printf("init q_connect_weights\n");
         fread(l.quantized_weights, sizeof(char), l.outputs*l.inputs, fp);
-        fread(l.M0_int32, sizeof(int), l.outputs, fp);
-        printf("M0_int32[0]=%d\n",l.M0_int32[0]);
-        fread(l.right_shift, sizeof(char), l.outputs, fp);
-        printf("right_shift[0]=%d\n",l.right_shift[0]);
-        fread(l.quantization_per_channel_zeropoint, sizeof(int), l.outputs, fp);
+        printf("qconnected_weight[0]=%d\n",l.quantized_weights[0]);
+        if(l.float_cal&combined_weight){
+            fseek( fp,  sizeof(int)*l.outputs, SEEK_CUR); //M0_int32
+            fseek( fp,  sizeof(char)*l.outputs, SEEK_CUR); //right_shift
+        }
+        else{
+            fread(l.M0_int32, sizeof(int), l.outputs, fp);
+            printf("M0_int32[0]=%d\n",l.M0_int32[0]);
+            fread(l.right_shift, sizeof(char), l.outputs, fp);
+            printf("right_shift[0]=%d\n",l.right_shift[0]);
+        }
+        fread(l.quantization_per_channel_zeropoint, sizeof(int), l.outputs, fp);    
         printf("quantization_per_channel_zeropoint[0]=%d\n",l.quantization_per_channel_zeropoint[0]);
-        fread(l.biases_int32, sizeof(int), l.outputs, fp);
-        printf("biases_int32[0]=%d\n",l.biases_int32[0]);
+        if(l.float_cal){
+            if(combined_weight){
+                fseek( fp,  sizeof(int)*l.outputs, SEEK_CUR); //biases_int32
+            }
+            fread(l.quantization_per_channel_scale, sizeof(float), l.outputs, fp);
+            printf("quantization_per_channel_scale[0]=%f\n",l.quantization_per_channel_scale[0]);
+            fread(l.biases, sizeof(float), l.outputs, fp);
+            printf("biases_float[0]=%f\n",l.biases[0]);        
+
+        }
+        else{
+            fread(l.biases_int32, sizeof(int), l.outputs, fp);
+            printf("biases_int32[0]=%d\n",l.biases_int32[0]);
+            if(combined_weight){
+                fseek( fp,  sizeof(float)*l.outputs, SEEK_CUR); //per_channel_scale
+                fseek( fp,  sizeof(float)*l.outputs, SEEK_CUR); //biases_float            
+            }
+        }
         printf("1\n");
 
         if(transpose){
@@ -2338,7 +2373,11 @@ void load_convolutional_weights(layer l, FILE *fp)
     }
     int num = l.nweights;
     int read_bytes;
+    read_bytes = fread(l.weights, sizeof(float), num, fp);
+    printf("l.weights[0]:%f\n",l.weights[0]);
     read_bytes = fread(l.biases, sizeof(float), l.n, fp);
+    printf("l.biases[0]:%f\n",l.biases[0]);
+
     if (read_bytes > 0 && read_bytes < l.n) printf("\n Warning: Unexpected end of wights-file! l.biases - l.index = %d \n", l.index);
     //fread(l.weights, sizeof(float), num, fp); // as in connected layer
     if (l.batch_normalize && (!l.dontloadscales)){
@@ -2364,7 +2403,7 @@ void load_convolutional_weights(layer l, FILE *fp)
             fill_cpu(l.n, 0, l.rolling_variance, 1);
         }
     }
-    read_bytes = fread(l.weights, sizeof(float), num, fp);
+    
     if (read_bytes > 0 && read_bytes < l.n) printf("\n Warning: Unexpected end of wights-file! l.weights - l.index = %d \n", l.index);
     //if(l.adam){
     //    fread(l.m, sizeof(float), num, fp);
@@ -2382,7 +2421,7 @@ void load_convolutional_weights(layer l, FILE *fp)
 #endif
 }
 
-void load_quantized_convolutional_weights(layer l, FILE *fp, int quantization_type)  ///where is define?
+void load_quantized_convolutional_weights(layer l, FILE *fp, int quantization_type,int combined_weight)  ///where is define?
 {
     if(l.binary){
         //load_convolutional_weights_binary(l, fp);
@@ -2419,16 +2458,38 @@ void load_quantized_convolutional_weights(layer l, FILE *fp, int quantization_ty
         }
         printf("load q_weight start\n");
         printf("num = %d\n",num);
-        read_bytes = fread(l.quantized_weights, sizeof(char), num, fp);
+        fread(l.quantized_weights, sizeof(char), num, fp);
         printf("qconv_weight[0]=%d\n",l.quantized_weights[0]);
-        read_bytes = fread(l.M0_int32, sizeof(int), l.n, fp);
-        printf("M0_int32[0]=%d\n",l.M0_int32[0]);
-        read_bytes = fread(l.right_shift, sizeof(char), l.n, fp);
-        printf("right_shift[0]=%d\n",l.right_shift[0]);
-        read_bytes = fread(l.quantization_per_channel_zeropoint, sizeof(int), l.n, fp);
+        if(l.float_cal&combined_weight){
+            fseek( fp,  sizeof(int)*l.n, SEEK_CUR); //M0_int32
+            fseek( fp,  sizeof(char)*l.n, SEEK_CUR); //right_shift
+        }
+        else{
+            fread(l.M0_int32, sizeof(int), l.n, fp);
+            printf("M0_int32[0]=%d\n",l.M0_int32[0]);
+            fread(l.right_shift, sizeof(char), l.n, fp);
+            printf("right_shift[0]=%d\n",l.right_shift[0]);
+        }
+        fread(l.quantization_per_channel_zeropoint, sizeof(int), l.n, fp);    
         printf("quantization_per_channel_zeropoint[0]=%d\n",l.quantization_per_channel_zeropoint[0]);
-        read_bytes = fread(l.biases_int32, sizeof(int), l.n, fp);
-        printf("biases_int32[0]=%d\n",l.biases_int32[0]);
+        if(l.float_cal){
+            if(combined_weight){            
+                fseek( fp,  sizeof(int)*l.n, SEEK_CUR); //biases_int32
+            }
+            fread(l.quantization_per_channel_scale, sizeof(float), l.n, fp);
+            printf("quantization_per_channel_scale[0]=%f\n",l.quantization_per_channel_scale[0]);
+            fread(l.biases, sizeof(float), l.n, fp);
+            printf("biases_float[0]=%f\n",l.biases[0]);        
+
+        }
+        else{
+            fread(l.biases_int32, sizeof(int), l.n, fp);
+            printf("biases_int32[0]=%d\n",l.biases_int32[0]);
+            if(combined_weight){
+                fseek( fp,  sizeof(float)*l.n, SEEK_CUR); //per_channel_scale
+                fseek( fp,  sizeof(float)*l.n, SEEK_CUR); //biases_float        
+            }    
+        }
         if (read_bytes > 0 && read_bytes < l.n) printf("\n Warning: Unexpected end of wights-file! l.weights - l.index = %d \n", l.index);
         if (l.flipped) {
             transpose_matrix(l.quantized_weights, (l.c/l.groups)*l.size*l.size, l.n);
@@ -2486,7 +2547,11 @@ void load_shortcut_weights(layer l, FILE *fp)
     int num = l.nweights;
     int read_bytes;
     read_bytes = fread(l.weights, sizeof(float), num, fp);
-    if (read_bytes > 0 && read_bytes < num) printf("\n Warning: Unexpected end of wights-file! l.weights - l.index = %d \n", l.index);
+    printf("l.weights[0]:%f\n",l.weights[0]);
+    read_bytes = fread(l.biases, sizeof(float), l.c, fp);
+    printf("l.biases[0]:%f\n",l.biases[0]);
+
+    // if (read_bytes > 0 && read_bytes < num) printf("\n Warning: Unexpected end of wights-file! l.weights - l.index = %d \n", l.index);
     //for (int i = 0; i < l.nweights; ++i) printf(" %f, ", l.weights[i]);
     //printf(" read_bytes = %d \n\n", read_bytes);
 #ifdef GPU
@@ -2495,23 +2560,44 @@ void load_shortcut_weights(layer l, FILE *fp)
     }
 #endif
 }
-void load_quantized_shortcut_weights(layer l, FILE *fp)
+void load_quantized_shortcut_weights(layer l, FILE *fp, int combined_weight)
 {
     int num = l.nweights;
     int read_bytes;
-
     printf("load q_shortcut_weight start\n");
     printf("num = %d\n",num);
     read_bytes = fread(l.quantized_weights, sizeof(char), num, fp);
     printf("qconv_weight[0]=%d\n",l.quantized_weights[0]);
-    read_bytes = fread(l.M0_int32, sizeof(int), l.c, fp);
-    printf("qconv_per_channel_scale[0]=%d\n",l.M0_int32[0]);
-    read_bytes = fread(l.right_shift, sizeof(char), l.c, fp);
-    printf("qconv_per_channel_scale[0]=%d\n",l.right_shift[0]);
-    read_bytes = fread(l.quantization_per_channel_zeropoint, sizeof(int), l.c, fp);
-    printf("qconv_per_zeropoint[0]=%d\n",l.quantization_per_channel_zeropoint[0]);
-    read_bytes = fread(l.biases_int32, sizeof(int), l.c, fp);
-    printf("qconv_bias[0]=%d\n",l.biases_int32[0]);
+    if(l.float_cal&combined_weight){
+        fseek( fp,  sizeof(int)*l.c, SEEK_CUR); //M0_int32
+        fseek( fp,  sizeof(char)*l.c, SEEK_CUR); //right_shift
+    }
+    else{
+        fread(l.M0_int32, sizeof(int), l.c, fp);
+        printf("M0_int32[0]=%d\n",l.M0_int32[0]);
+        fread(l.right_shift, sizeof(char), l.c, fp);
+        printf("right_shift[0]=%d\n",l.right_shift[0]);
+    }
+    fread(l.quantization_per_channel_zeropoint, sizeof(int), l.c, fp);    
+    printf("quantization_per_channel_zeropoint[0]=%d\n",l.quantization_per_channel_zeropoint[0]);
+    if(l.float_cal){
+        if(combined_weight){
+            fseek( fp,  sizeof(int)*l.c, SEEK_CUR); //biases_int32
+        }
+        fread(l.quantization_per_channel_scale, sizeof(float), l.c, fp);
+        printf("quantization_per_channel_scale[0]=%f\n",l.quantization_per_channel_scale[0]);
+        fread(l.biases, sizeof(float), l.c, fp);
+        printf("biases_float[0]=%f\n",l.biases[0]);        
+
+    }
+    else{
+        fread(l.biases_int32, sizeof(int), l.c, fp);
+        printf("biases_int32[0]=%d\n",l.biases_int32[0]);
+        if(combined_weight){
+            fseek( fp,  sizeof(float)*l.c, SEEK_CUR); //per_channel_scale
+            fseek( fp,  sizeof(float)*l.c, SEEK_CUR); //biases_float            
+        }
+    }
     //for (int i = 0; i < l.nweights; ++i) printf(" %f, ", l.weights[i]);
     //printf(" read_bytes = %d \n\n", read_bytes);
 // #ifdef GPU
@@ -2577,7 +2663,7 @@ void load_weights_upto(network *net, char *filename, int cutoff)
             if (l.dontload) continue;
             if(l.type == CONVOLUTIONAL && l.share_layer == NULL){
                 if(net->quantization_type){
-                    load_quantized_convolutional_weights(l, fp, net->quantization_type);
+                    load_quantized_convolutional_weights(l, fp, net->quantization_type, net->combined_weight);
                 }
                 else{
                     load_convolutional_weights(l, fp);
@@ -2586,7 +2672,7 @@ void load_weights_upto(network *net, char *filename, int cutoff)
             }
             if (l.type == SHORTCUT && l.nweights > 0) {
                 if(net->quantization_type){   
-                    load_quantized_shortcut_weights(l, fp);
+                    load_quantized_shortcut_weights(l, fp, net ->combined_weight);
                 }
                 else{ 
                     load_shortcut_weights(l, fp);
@@ -2597,7 +2683,7 @@ void load_weights_upto(network *net, char *filename, int cutoff)
             }
             if(l.type == CONNECTED){
                 if(net->quantization_type){
-                    load_quantized_connected_weights(l, fp, transpose,net->quantization_type);
+                    load_quantized_connected_weights(l, fp, transpose,net->quantization_type, net->combined_weight);
 
                 }
                 else{

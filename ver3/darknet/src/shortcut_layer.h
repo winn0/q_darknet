@@ -7,12 +7,12 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-layer make_shortcut_layer(int batch, int n, int *input_layers, int* input_sizes, int w, int h, int c,
+layer make_shortcut_layer(int batch, int n, int *input_layers, int* input_sizes, int w, int h, int c, int w2, int h2, int c2,
     float **layers_output, float **layers_delta, float **layers_output_gpu, float **layers_delta_gpu, WEIGHTS_TYPE_T weights_type, WEIGHTS_NORMALIZATION_T weights_normalization,
     ACTIVATION activation, int train);
 layer make_quantized_shortcut_layer(int batch, int n, int *input_layers, int* input_sizes, int w, int h, int c,int layers_w, int layers_h, int layers_c,
     unsigned char **layers_output_uint8, float **layers_delta, float **layers_output_gpu, float **layers_delta_gpu, WEIGHTS_TYPE_T weights_type, WEIGHTS_NORMALIZATION_T weights_normalization,
-    ACTIVATION activation, int train, int quantization_type);
+    ACTIVATION activation, int train, int quantization_type, int float_cal);
 void forward_shortcut_layer(const layer l, network_state state);
 void backward_shortcut_layer(const layer l, network_state state);
 void update_shortcut_layer(layer l, int batch, float learning_rate_init, float momentum, float decay);

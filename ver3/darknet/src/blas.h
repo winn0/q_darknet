@@ -41,7 +41,7 @@ void backward_shortcut_multilayer_cpu(int size, int src_outputs, int batch, int 
 void mean_cpu(float *x, int batch, int filters, int spatial, float *mean);
 void variance_cpu(float *x, float *mean, int batch, int filters, int spatial, float *variance);
 void normalize_cpu(float *x, float *mean, float *variance, int batch, int filters, int spatial);
-void quantized_normalize_cpu(float *x, float *mean, float *variance, int batch, int filters, int spatial);
+void quantized_normalize_cpu(float *x, float *mean, float *std, int batch, int filters, int spatial);
 
 void add_bias(float *output, float *biases, int batch, int n, int size);
 void scale_bias(float *output, float *scales, int batch, int n, int size);

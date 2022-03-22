@@ -11,7 +11,7 @@ typedef layer connected_layer;
 extern "C" {
 #endif
 connected_layer make_connected_layer(int batch, int steps, int inputs, int outputs, ACTIVATION activation, int batch_normalize);
-connected_layer make_quantized_connected_layer(int batch, int steps, int inputs, int outputs, ACTIVATION activation, int batch_normalize,int quantization_type);
+connected_layer make_quantized_connected_layer(int batch, int steps, int inputs, int outputs, ACTIVATION activation, int batch_normalize,int quantization_type, int float_cal);
 size_t get_connected_workspace_size(layer l);
 
 void forward_connected_layer(connected_layer layer, network_state state);

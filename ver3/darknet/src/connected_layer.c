@@ -156,13 +156,14 @@ connected_layer make_connected_layer(int batch, int steps, int inputs, int outpu
     return l;
 }
 
-connected_layer make_quantized_connected_layer(int batch, int steps, int inputs, int outputs, ACTIVATION activation, int batch_normalize, int quantization_type)
+connected_layer make_quantized_connected_layer(int batch, int steps, int inputs, int outputs, ACTIVATION activation, int batch_normalize, int quantization_type, int float_cal)
 {
     int total_batch = batch*steps;
     int i;
     connected_layer l = { (LAYER_TYPE)0 };
     l.type = CONNECTED;
     l.quantization_type=quantization_type;
+    l.float_cal=float_cal;
     l.inputs = inputs;
     l.outputs = outputs;
     l.batch= batch;
@@ -186,14 +187,16 @@ connected_layer make_quantized_connected_layer(int batch, int steps, int inputs,
         l.quantized_output = (int*)xcalloc(total_batch * outputs, sizeof(int));        
         l.quantized_output_uint8 = (unsigned char*)xcalloc(total_batch * outputs, sizeof(char));        
         l.quantized_weights = (char*)xcalloc(outputs * inputs, sizeof(char));
-        l.M0_int32 = (int*)xcalloc(outputs, sizeof(int));   
-        l.right_shift = (unsigned char*)xcalloc(outputs, sizeof(unsigned char));   
         l.quantization_per_channel_zeropoint = (int*)xcalloc(outputs,sizeof(int)); 
-        l.biases_int32 = (int*)xcalloc(outputs, sizeof(int));   
-        //l.quantization_per_channel_scale = (float*)xcalloc(outputs,sizeof(float)); 
-
-        //l.output = (float*)xcalloc(total_batch * outputs, sizeof(float));    
-        //l.weights = (float*)xcalloc(outputs * inputs, sizeof(float));
+        if(l.float_cal){
+            l.biases = (float*)xcalloc(outputs, sizeof(float));   
+            l.quantization_per_channel_scale = (float*)xcalloc(outputs,sizeof(float)); 
+        }
+        else{
+            l.M0_int32 = (int*)xcalloc(outputs, sizeof(int));   
+            l.right_shift = (unsigned char*)xcalloc(outputs, sizeof(unsigned char));  
+            l.biases_int32 = (int*)xcalloc(outputs, sizeof(int));   
+        }        
     }
     else{
         l.output = (float*)xcalloc(total_batch * outputs, sizeof(float));    
@@ -301,7 +304,7 @@ void update_connected_layer(connected_layer l, int batch, float learning_rate, f
 void forward_connected_layer(connected_layer l, network_state state)
 {
     // printf("init forward_connected_layer\n");
-    int i;
+    int i,iter;
     //fill_cpu(l.outputs*l.batch, 0, l.output, 1);
     int m = l.batch;
     int k = l.inputs;
@@ -313,12 +316,23 @@ void forward_connected_layer(connected_layer l, network_state state)
         int *q_c = l.quantized_output;
         // for(i = 0 ; i<n; i++)q_c[i]=0;
         quantized_gemm(0,1,m,n,k,1,q_a,k,q_b,k,1,q_c,n);
-        connect_output_quantization(q_a,q_b,q_c,
-            l.inputs,l.outputs,
-            state.quantized_input_zeropoint,l.quantization_per_channel_zeropoint,
-            l.M0_int32,l.right_shift,
-            l.quantization_layer_zeropoint,
-            l.quantized_output_uint8,l.biases_int32);
+        if(l.index==3){for(iter = 0 ; iter<200; iter++) printf("qc[%d]:%d\n",iter,q_c[iter]);    } 
+        if(l.float_cal){        
+            connect_output_quantization_float_cal(q_a,q_b,q_c,
+                l.inputs,l.outputs,
+                state.quantized_input_scale,state.quantized_input_zeropoint,
+                l.quantization_per_channel_scale,l.quantization_per_channel_zeropoint,
+                l.quantization_layer_scale,l.quantization_layer_zeropoint,
+                l.quantized_output_uint8,l.biases); 
+        }
+        else{
+            connect_output_quantization(q_a,q_b,q_c,
+                l.inputs,l.outputs,
+                state.quantized_input_zeropoint,l.quantization_per_channel_zeropoint,
+                l.M0_int32,l.right_shift,
+                l.quantization_layer_zeropoint,
+                l.quantized_output_uint8,l.biases_int32);
+        }
     }
     else{
         float *a = state.input;

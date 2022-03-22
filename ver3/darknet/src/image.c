@@ -1518,8 +1518,15 @@ image load_image_stb(char *filename, int channels)
         return make_image(10, 10, 3);
         //exit(EXIT_FAILURE);
     }
-    if(channels) c = channels;
     int i,j,k;
+    if(channels) c = channels;
+    // for save image
+    char buf[30]= "input_image/seven";
+    FILE *fp_w = fopen(buf,"wb");
+    fwrite(data,sizeof(char),h*w*c,fp_w);
+    fclose(fp_w);    
+    
+
     image im = make_image(w, h, c);
     for(k = 0; k < c; ++k){
         for(j = 0; j < h; ++j){

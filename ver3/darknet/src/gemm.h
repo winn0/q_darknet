@@ -95,7 +95,11 @@ void quantized_gemm(int TA, int TB, int M, int N, int K, float ALPHA,
                     unsigned char *B, int ldb,
                     float BETA,
                     int *C, int ldc);
-
+void quantized_gemm_print(int TA, int TB, int M, int N, int K, float ALPHA,
+                    char *A, int lda,
+                    unsigned char *B, int ldb,
+                    float BETA,
+                    int *C, int ldc);
 void gemm(int TA, int TB, int M, int N, int K, float ALPHA,
                     float *A, int lda,
                     float *B, int ldb,
@@ -113,6 +117,7 @@ void gemm(int TA, int TB, int M, int N, int K, float ALPHA,
 //                         float *output_float); //output_float_version
 void fixed_nomalization(float input_scale, float* kernel_scale,float layer_scale,int out_channel,unsigned int *M_0, int *right_shift);
 void bias_scale(float* bias, float input_scale,float *kernel_scale, int out_channel, int* bias_int32);
+
 void conv_output_quantization(char *quantized_weight, unsigned char *im2col_input, int *mm_output,
                         int input_channel, int out_channel,
                         int out_h,int out_w,
@@ -129,6 +134,22 @@ void connect_output_quantization(char *quantized_weight,unsigned char *input,  i
                         int *M0_int32, unsigned char* right_shift, 
                         int layer_zeropoint,
                         unsigned char *quantized_output_uint8, int *biases_int32);
+void conv_output_quantization_float_cal(char *quantized_weight, unsigned char *im2col_input, int *mm_output,
+                        int input_channel, int out_channel,
+                        int out_h,int out_w,
+                        int kernel_w,int kernel_h,
+                        float input_scale,int input_zeropoint,
+                        float *kernel_scale, int *kernel_zeropoint,
+                        float layer_scale, int layer_zeropoint,
+                        unsigned char *quantized_output_uint8, float *biases_float);
+void connect_output_quantization_float_cal(char *quantized_weight, unsigned char *input, int *mm_output,
+                        int input_channel, int out_channel,
+                       // int out_h,int out_w,
+                       // int kernel_w,int kernel_h,
+                        float input_scale,int input_zeropoint,
+                        float *kernel_scale, int *kernel_zeropoint,
+                        float layer_scale, int layer_zeropoint,
+                        unsigned char *quantized_output_uint8, float *biases_float);
 void quantized_input_accumulate(int M, int N, int K, // out_channels out_w*out*h  input_channel*kernel_w*kernel_h
                                 unsigned char *im2col_input, //input 
                                 int *input_acc); // output

@@ -735,14 +735,14 @@ float validate_classifier_single(char *datacfg, char *filename, char *weightfile
         float *predictions;
         float* X;
         float * mean=(float*)xcalloc(net.c, sizeof(float)); 
-        float * var=(float*)xcalloc(net.c, sizeof(float)); 
+        float * std=(float*)xcalloc(net.c, sizeof(float)); 
         int read_bytes;
         mean[0]=net.normalize_mean_0;
         mean[1]=net.normalize_mean_1;
         mean[2]=net.normalize_mean_2;
-        var[0]=net.normalize_var_0;
-        var[1]=net.normalize_var_1;
-        var[2]=net.normalize_var_2;
+        std[0]=net.normalize_std_0;
+        std[1]=net.normalize_std_1;
+        std[2]=net.normalize_std_2;
         if (net.quantization_type){
             if(net.start_check_point){
                 int input_size = net.layers[net.start_check_point-1].inputs; 
@@ -756,28 +756,21 @@ float validate_classifier_single(char *datacfg, char *filename, char *weightfile
 
                 //for mnist
                 //float mean[] = {0.1307, 0.1307, 0.1307};
-                //float var[] = {0.3081, 0.3081, 0.3081};
+                //float std[] = {0.3081, 0.3081, 0.3081};
                 //for cifar10
                 //float mean[] = {0.485, 0.456, 0.406};
-                //float var[] = {0.229, 0.224, 0.225};            
-                quantized_normalize_cpu(crop.data, mean, var, 1, 3, im.w*im.h);
+                //float std[] = {0.229, 0.224, 0.225};            
+                quantized_normalize_cpu(crop.data, mean, std, 1, 3, im.w*im.h);
                 
                 //input quantization can combine with normalize
                 for (iter=0 ;iter<net.h*net.w*net.c; iter++)quantized_X[iter] = (unsigned char)(round(crop.data[iter]/net.input_scale))+(unsigned char)(net.input_zeropoint);
-    
-    
-                //normalize_cpu(im.data, mean, var, 1, 3, im.w*im.h);
-                //quantize_input(cropped,quantized_X,net.input_scale,net.input_zeropoint);
-                //FILE *fp = fopen("cifar10_input", "rb");
-                //read_bytes = fread(quantized_X, sizeof(unsigned char), 32*32*3, fp);
-                //printf("q_X[0]=%d\n",quantized_X[0]);
-
+            
             }
             predictions = quantized_network_predict(net, quantized_X);
         }
         else{
 
-            quantized_normalize_cpu(crop.data, mean, var, 1, 3, im.w*im.h);              
+            quantized_normalize_cpu(crop.data, mean, std, 1, 3, im.w*im.h);              
             X = crop.data;
             predictions = network_predict(net, X);
 
@@ -789,7 +782,7 @@ float validate_classifier_single(char *datacfg, char *filename, char *weightfile
 
         if(resized.data != im.data) free_image(resized);
         free(mean);
-        free(var);
+        free(std);
         free(quantized_X);
         free_image(im);
         free_image(crop);
@@ -1018,14 +1011,14 @@ void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *fi
         int read_bytes;
         unsigned char * quantized_X;
         float * mean=(float*)xcalloc(net.c, sizeof(float)); 
-        float * var=(float*)xcalloc(net.c, sizeof(float)); 
+        float * std=(float*)xcalloc(net.c, sizeof(float)); 
 
         mean[0]=net.normalize_mean_0;
         mean[1]=net.normalize_mean_1;
         mean[2]=net.normalize_mean_2;
-        var[0]=net.normalize_var_0;
-        var[1]=net.normalize_var_1;
-        var[2]=net.normalize_var_2;
+        std[0]=net.normalize_std_0;
+        std[1]=net.normalize_std_1;
+        std[2]=net.normalize_std_2;
         if (net.quantization_type){
             if(net.start_check_point){
                 int input_size = net.layers[net.start_check_point-1].inputs; 
@@ -1040,35 +1033,60 @@ void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *fi
 
                 //for mnist
                 //float mean[] = {0.1307, 0.1307, 0.1307};
-                //float var[] = {0.3081, 0.3081, 0.3081};
+                //float std[] = {0.3081, 0.3081, 0.3081};
                 //for cifar10
                 //float mean[] = {0.485, 0.456, 0.406};
-                //float var[] = {0.229, 0.224, 0.225};            
+                //float std[] = {0.229, 0.224, 0.225};            
                 // for(iter=0; iter<net.w*net.h; iter++) {printf("before_norm_cropped.data[%d]=%f\n",iter,cropped.data[iter]);}
-                quantized_normalize_cpu(cropped.data, mean, var, 1, 3, im.w*im.h);
-                // for(iter=0; iter<net.w*net.h; iter++) {printf("cropped.data[%d]=%f\n",iter,cropped.data[iter]);}
+
+                //  FILE *fp = fopen("input_data_horse_not_normalized", "rb");
+                //  float * img_data=(float*)xcalloc(net.w*net.h*net.c, sizeof(float)); 
+                //  read_bytes = fread(img_data, sizeof(float), net.w*net.h*net.c, fp);      
+                // fclose(fp);
+                // quantized_normalize_cpu(img_data, mean, std, 1, 3, im.w*im.h);
+                // FILE *fp_w = fopen("partial_output/normalize_out","wb");
+                // fwrite(img_data,sizeof(float),net.h*net.w*net.c,fp_w);
+                // fclose(fp_w); 
+                // for(iter=0; iter<net.w*net.h*net.c; iter++) {printf("before normalize cropped.data[%d]=%f\n",iter,cropped.data[iter]);}  
+                quantized_normalize_cpu(cropped.data, mean, std, 1, 3, im.w*im.h);
+                // FILE *fp_w3 = fopen("partial_output/raw_out","wb");
+                // fwrite(cropped.data,sizeof(float),net.h*net.w*net.c,fp_w3);
+                // fclose(fp_w3); 
+                 // for(iter=0; iter<net.w*net.h; iter++) {printf("cropped.data[%d]=%f\n",iter,cropped.data[iter]);}
                 //input quantization can combine with normalize
-                 for (iter=0 ;iter<net.h*net.w*net.c; iter++)quantized_X[iter] = (unsigned char)(round(cropped.data[iter]/net.input_scale)+net.input_zeropoint);
-    
-    
-                //normalize_cpu(im.data, mean, var, 1, 3, im.w*im.h);
+                //  FILE *fp = fopen("input_data_horse_float", "rb");
+                //  float * img_data=(float*)xcalloc(net.w*net.h*net.c, sizeof(float)); 
+                //  read_bytes = fread(img_data, sizeof(float), net.w*net.h*net.c, fp);      
+                // fclose(fp);
+                 // printf("img_data[0]:%f\n",img_data[0]);          
+                // for (iter=0 ;iter<net.h*net.w*net.c; iter++)quantized_X[iter] = (unsigned char)(round(img_data[iter]/net.input_scale)+net.input_zeropoint);
+                for (iter=0 ;iter<net.h*net.w*net.c; iter++)quantized_X[iter] = (unsigned char)(round(cropped.data[iter]/net.input_scale)+net.input_zeropoint);
+                // for debug
+                // char buff[30]="partial_output/quant_out";
+                // FILE *fp_w2 = fopen(buff,"wb");
+                // fwrite(quantized_X,sizeof(unsigned char),net.h*net.w*net.c,fp_w2);
+                // fclose(fp_w2);                    
+                
+                //normalize_cpu(im.data, mean, std, 1, 3, im.w*im.h);
                 //quantize_input(cropped,quantized_X,net.input_scale,net.input_zeropoint);
-                // FILE *fp = fopen("input_data_horse2", "rb");
-                // read_bytes = fread(quantized_X, sizeof(unsigned char), net.w*net.h*net.c, fp);
+                 // FILE *fp = fopen("input_data_horse2", "rb");
+                 // read_bytes = fread(quantized_X, sizeof(unsigned char), net.w*net.h*net.c, fp);
                 //for debug
                 //FILE *fp = fopen("0001_quantized_input","wb");
                 //fwrite(quantized_X,sizeof(char),net.h*net.w*net.c,fp);
                 //fclose(fp);
-                // for(iter=0; iter<net.w*net.h; iter++) {printf("q_X[%d]=%f\n",iter,quantized_X[iter]);}
+                  for(iter=0; iter<net.w*net.h; iter++) {printf("q_X[%d]=%d\n",iter,quantized_X[iter]);}
                 //printf("q_X[0]=%d\n",quantized_X[0]);
             }
             time = get_time_point();
             predictions = quantized_network_predict(net, quantized_X);
         }
         else{
+            
+            quantized_normalize_cpu(cropped.data, mean, std, 1, 3, im.w*im.h);
             X = cropped.data;
-            quantized_normalize_cpu(cropped.data, mean, var, 1, 3, im.w*im.h);
             time = get_time_point();
+            printf("aaa\n");
             predictions = network_predict(net, X);
 
         }

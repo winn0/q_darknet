@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-layer make_shortcut_layer(int batch, int n, int *input_layers, int* input_sizes, int w, int h, int c,
+layer make_shortcut_layer(int batch, int n, int *input_layers, int* input_sizes, int w, int h, int c, int w2, int h2, int c2,
     float **layers_output, float **layers_delta, float **layers_output_gpu, float **layers_delta_gpu, WEIGHTS_TYPE_T weights_type, WEIGHTS_NORMALIZATION_T weights_normalization,
     ACTIVATION activation, int train)
 {
@@ -47,12 +47,13 @@ layer make_shortcut_layer(int batch, int n, int *input_layers, int* input_sizes,
     if (train) l.delta = (float*)xcalloc(l.outputs * batch, sizeof(float));
     l.output = (float*)xcalloc(l.outputs * batch, sizeof(float));
 
-    l.nweights = 0;
-    if (l.weights_type == PER_FEATURE) l.nweights = (l.n + 1);
-    else if (l.weights_type == PER_CHANNEL) l.nweights = (l.n + 1) * l.c;
-
+    // l.nweights = 0;
+    // if (l.weights_type == PER_FEATURE) l.nweights = (l.n + 1);
+    // else if (l.weights_type == PER_CHANNEL) l.nweights = (l.n + 1) * l.c;
+    if (w != w2 || h != h2 || c != c2) l.nweights = c*c2;
     if (l.nweights > 0) {
         l.weights = (float*)calloc(l.nweights, sizeof(float));
+        l.biases = (float*)calloc(l.c, sizeof(float));
         float scale = sqrt(2. / l.nweights);
         for (i = 0; i < l.nweights; ++i) l.weights[i] = 1;// +0.01*rand_uniform(-1, 1);// scale*rand_uniform(-1, 1);   // rand_normal();
 
@@ -93,7 +94,7 @@ layer make_shortcut_layer(int batch, int n, int *input_layers, int* input_sizes,
 }
 layer make_quantized_shortcut_layer(int batch, int n, int *input_layers, int* input_sizes, int w, int h, int c,int layers_w, int layers_h, int layers_c,
     unsigned char **layers_output_uint8, float **layers_delta, float **layers_output_gpu, float **layers_delta_gpu, WEIGHTS_TYPE_T weights_type, WEIGHTS_NORMALIZATION_T weights_normalization,
-    ACTIVATION activation, int train,int quantization_type)
+    ACTIVATION activation, int train,int quantization_type, int float_cal)
 {
     fprintf(stderr, "Shortcut Layer: ");
     int i;
@@ -101,6 +102,7 @@ layer make_quantized_shortcut_layer(int batch, int n, int *input_layers, int* in
 
     layer l = { (LAYER_TYPE)0 };
     l.quantization_type=quantization_type;
+    l.float_cal=float_cal;
     l.train = train;
     l.type = SHORTCUT;
     l.batch = batch;
@@ -138,11 +140,16 @@ layer make_quantized_shortcut_layer(int batch, int n, int *input_layers, int* in
             l.nweights = c*layers_c;
             //l.biases = (float*)xcalloc(c, sizeof(float));   
             l.quantized_weights = (char*)xcalloc(l.nweights, sizeof(char));
-            l.M0_int32 = (int*)xcalloc(c, sizeof(int));   
-            l.right_shift = (unsigned char*)xcalloc(c, sizeof(unsigned char));   
-            l.biases_int32 = (int*)xcalloc(c, sizeof(int));
-            //l.quantization_per_channel_scale = (float*)xcalloc(c,sizeof(float)); 
             l.quantization_per_channel_zeropoint = (int*)xcalloc(c,sizeof(int)); 
+            if(l.float_cal){
+                l.biases = (float*)xcalloc(c, sizeof(float));   
+                l.quantization_per_channel_scale = (float*)xcalloc(c,sizeof(float)); 
+            }
+            else{
+                l.M0_int32 = (int*)xcalloc(c, sizeof(int));   
+                l.right_shift = (unsigned char*)xcalloc(c, sizeof(unsigned char));  
+                l.biases_int32 = (int*)xcalloc(c, sizeof(int));   
+            }            
        }
     }
     else{
@@ -152,6 +159,8 @@ layer make_quantized_shortcut_layer(int batch, int n, int *input_layers, int* in
     
             if (l.nweights > 0) {
                 l.weights = (float*)calloc(l.nweights, sizeof(float));
+                l.biases = (float*)calloc(l.nweights, sizeof(float));
+
                 float scale = sqrt(2. / l.nweights);
                 for (i = 0; i < l.nweights; ++i) l.weights[i] = 1;// +0.01*rand_uniform(-1, 1);// scale*rand_uniform(-1, 1);   // rand_normal();
     
@@ -257,6 +266,9 @@ void forward_shortcut_layer(const layer l, network_state state)
     int from_w = state.net.layers[l.index].out_w;
     int from_h = state.net.layers[l.index].out_h;
     int from_c = state.net.layers[l.index].out_c;
+    float *a;
+    float *b;
+    float *c;
     char *q_a;
     unsigned char *q_b;
     int *q_c;
@@ -271,11 +283,34 @@ void forward_shortcut_layer(const layer l, network_state state)
 
 
         if (l.quantization_type){
+            int temp;
             #pragma omp parallel for
             for(i = 0; i < size; ++i){
                 //scale nomalize is required state  state.quantized_input_scale and state.net.layers[l.index].quantization_layer_scale
                 //assert(state.quantized_input_scale == l.quantization_layer_scale && state.quantized_input_zeropoint == l.quantization_layer_zeropoint);
                // assert(state.quantized_input_scale == state.net.layers[l.index].quantization_layer_scale && state.quantized_input_zeropoint == state.net.layers[l.index].quantization_layer_zeropoint);
+                if(state.quantized_input_scale == l.quantization_layer_scale){
+                    if(l.quantization_layer_scale == state.net.layers[l.index].quantization_layer_scale){
+                        temp= (int)state.net.layers[l.index].quantized_output_uint8[i]+(int)state.quantized_input[i];
+
+                        if(state.quantized_input_zeropoint) temp-=state.quantized_input_zeropoint;
+                        if(state.net.layers[l.index].quantization_layer_zeropoint) temp-=state.net.layers[l.index].quantization_layer_zeropoint;
+                        if(l.quantization_layer_zeropoint)temp+=l.quantization_layer_zeropoint;
+
+                    }
+                    else{
+                        int64_t op1, op2;
+                        if(l.float_cal){
+                            op1 = (int)state.net.layers[l.index].quantized_output_uint8[i]
+                        if(state.quantized_input_zeropoint) temp-=state.quantized_input_zeropoint;
+                        if(state.net.layers[l.index].quantization_layer_zeropoint) temp-=state.net.layers[l.index].quantization_layer_zeropoint;
+                        if(l.quantization_layer_zeropoint)temp+=l.quantization_layer_zeropoint;                        
+                        }
+
+                        int op1=(int)state.net.layers[l.index].quantized_output_uint8[i];
+
+                    }
+                }
                 int temp= (int)state.quantized_input[i] + (int)state.net.layers[l.index].quantized_output_uint8[i];
                 assert(temp>=0);    
                 if(temp>=255) l.quantized_output_uint8[i] = 255;
@@ -284,8 +319,10 @@ void forward_shortcut_layer(const layer l, network_state state)
         }
         else{
             #pragma omp parallel for
-            for(i = 0; i < size; ++i)
+            for(i = 0; i < size; ++i){
                 l.output[i] = state.input[i] + state.net.layers[l.index].output[i];
+            }
+            activate_array_cpu_custom(l.output, size, l.activation);
         }
     }
     else {
@@ -329,14 +366,38 @@ void forward_shortcut_layer(const layer l, network_state state)
             for(i = 0; i < 16; ++i){
                  //printf("shortcut conv q_c[%d]:%d\n",i,q_c[i]);            
             }
-            conv_output_quantization(q_a,q_b,q_c,
+            if(l.float_cal){
+                conv_output_quantization_float_cal(q_a,q_b,q_c,
                 from_c,l.c,
                 l.h,l.w,
                 1,1,
-                l.quantization_layer_zeropoint,l.quantization_per_channel_zeropoint,
+                state.net.layers[l.index].quantization_layer_scale,state.net.layers[l.index].quantization_layer_zeropoint,
+                l.quantization_per_channel_scale,l.quantization_per_channel_zeropoint,
+                l.quantization_layer_scale,l.quantization_layer_zeropoint,
+                quantized_output_uint8_to_be_added,l.biases);   
+            }
+            else{
+                conv_output_quantization(q_a,q_b,q_c,
+                from_c,l.c,
+                l.h,l.w,
+                1,1,
+                state.net.layers[l.index].quantization_layer_zeropoint,l.quantization_per_channel_zeropoint,
                 l.M0_int32,l.right_shift,
-                 state.quantized_input_zeropoint,
-                 quantized_output_uint8_to_be_added,l.biases_int32);
+                l.quantization_layer_zeropoint,
+                quantized_output_uint8_to_be_added,l.biases_int32);
+            }            
+            //default :relu activation
+            for(i = 0; i < size; ++i){ 
+                if(quantized_output_uint8_to_be_added[i]<l.quantization_layer_zeropoint) quantized_output_uint8_to_be_added[i]=(unsigned char)l.quantization_layer_zeropoint;        
+            }
+            // conv_output_quantization(q_a,q_b,q_c, // order change  if error : check
+            //     from_c,l.c,
+            //     l.h,l.w,
+            //     1,1,
+            //     l.quantization_layer_zeropoint,l.quantization_per_channel_zeropoint,
+            //     l.M0_int32,l.right_shift,
+            //      state.quantized_input_zeropoint,
+            //      quantized_output_uint8_to_be_added,l.biases_int32);
             for(i = 0; i < 16; ++i){
                 // printf("shortcut conv quantized_output_uint8_to_be_added[%d]:%d\n",i,quantized_output_uint8_to_be_added[i]);
             }
@@ -345,6 +406,8 @@ void forward_shortcut_layer(const layer l, network_state state)
                 int temp= (int)state.quantized_input[i]  + (int)quantized_output_uint8_to_be_added[i];
                 assert(temp>=0);    
                 if(temp>=255) l.quantized_output_uint8[i] = 255;
+                //default :relu activation
+                else if(temp<l.quantization_layer_zeropoint) l.quantized_output_uint8[i] =(unsigned char)l.quantization_layer_zeropoint;
                 else l.quantized_output_uint8[i]=(unsigned char) temp;
             }
             for(i = 0; i < 16; ++i){
@@ -353,7 +416,58 @@ void forward_shortcut_layer(const layer l, network_state state)
             free(quantized_output_uint8_to_be_added);
         }
         else{
-            shortcut_multilayer_cpu(l.outputs * l.batch, l.outputs, l.batch, l.n, l.input_sizes, l.layers_output, l.output, state.input, l.weights, l.nweights, l.weights_normalization);
+            printf("1\n");
+            fill_cpu(size, 0, l.output, 1);             
+            a = l.weights;
+            //q_b = (unsigned char*)state.workspace;
+            b=(float*) calloc(size , sizeof(float)); 
+            c=(float*) calloc(size , sizeof(float)); 
+            fill_cpu(size, 0, b, 1);
+            fill_cpu(size, 0, c, 1);
+            printf("2\n");
+            //for(i = 0 ; i<l.out_h*l.out_w*l.c; i++)q_b[i]=0;
+            // for(i = 0 ; i<l.outputs; i++)q_c[i]=0;
+            
+           // printf(" l.c :%d l.h :%d l.w :%d \n l.out_c:%d l.out_h:%d  l.out_w:%d \n",l.c , l.h , l.w , l.out_c, l.out_h,  l.out_w );
+           // printf(" m:%d, n:%d, k:%d\n",m,n,k);
+            // #pragma omp parallel for
+            // for(i = 0; i < size; ++i){
+            //     quantized_output_uint8_to_be_added[i] = 0;
+           im2col_cpu_ext(state.net.layers[l.index].output,   // input
+                            from_c,     // input channels
+                            from_h, from_w,           // input size (h, w)
+                            1, 1,     // kernel size (h, w)
+                            0, 0,       // padding (h, w)
+                            2, 2, // stride (h, w)
+                            1, 1, // dilation (h, w)
+                            b);   // output
+            //assert(state.quantized_input_scale == l.quantization_layer_scale && state.quantized_input_zeropoint == l.quantization_layer_zeropoint);
+           // assert(state.quantized_input_scale == state.net.layers[l.index].quantization_layer_scale && state.quantized_input_zeropoint == state.net.layers[l.index].quantization_layer_zeropoint);
+            for(i = 0; i < 16; ++i){
+                 printf("shortcut conv a[%d]:%f\n",i,a[i]);            
+            }    
+            for(i = 0; i < 16; ++i){
+                 printf("shortcut conv b[%d]:%f\n",i,b[i]);            
+            }            
+            printf("3\n");
+            gemm(0, 0, m, n, k, 1, a, k, b, n, 1, c, n);
+            printf("4\n");
+            add_bias(c, l.biases, l.batch, l.out_c, l.out_h*l.out_w);
+            // activate_array_cpu_custom(c, l.outputs, l.activation);
+            #pragma omp parallel for
+            for(i = 0; i < size; ++i){ 
+                l.output[i] = state.input[i] + c[i];
+            }
+            printf(" add done \n");
+            activate_array_cpu_custom(l.output, size, l.activation);
+            printf(" activation2 done \n");
+            //activate_array(l.output, m*n*l.batch, l.activation);
+            
+            // for(i = 0; i < 16; ++i){
+            //      printf("shortcut conv output[%d]:%d\n",i,l.quantized_output_uint8[i]);
+            // }
+            free(a);
+            free(b);
         }
     }
 

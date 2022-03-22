@@ -438,6 +438,7 @@ struct layer {
     int quantization_layer_zeropoint;
     int *quantized_output;
     unsigned char *quantized_output_uint8;
+    int float_cal;
     float *weight_updates;
 
     float scale_x_y;
@@ -721,14 +722,15 @@ typedef enum {
 // network.h
 typedef struct network {
     int quantization_type; // parameter for quantizing  0:float32 1:int8
+    int combined_weight; // parameter for use combined weight file
     int start_check_point;
     int end_check_point;
     float normalize_mean_0;
     float normalize_mean_1;
     float normalize_mean_2;
-    float normalize_var_0;
-    float normalize_var_1;
-    float normalize_var_2;
+    float normalize_std_0;
+    float normalize_std_1;
+    float normalize_std_2;
     float input_scale;   //quantization parameter
     int input_zeropoint; //quantization parameter
     int n;
